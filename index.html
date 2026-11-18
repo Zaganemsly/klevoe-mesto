@@ -1338,7 +1338,7 @@ function potionsHTML(){S.potions=S.potions||{};return Object.entries(POTIONS).ma
    и выдаёт товар по событию successful_payment. Здесь — клиентская часть. Пока STARS_API пустой,
    работает тестовый режим (товар выдаётся без оплаты). Перед релизом выдачу перенести на сервер. */
 /* Адрес сервера оплаты, например 'https://api.klevoe-mesto.ru'. Пусто — тестовый режим (в релизе покупки скрыты). */
-const STARS_API='';
+const STARS_API='https://klevoe.danvoloshin99.workers.dev';
 function payStars(product,title,stars,grant){if(RELEASE&&!STARS_API)return toast('Покупки за звёзды появятся в ближайшем обновлении');
  if(STARS_API){if(!TG)return toast('Покупки работают внутри Telegram');
   fetch(STARS_API+'/api/invoice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:TG.initData,product})}).then(r=>r.json()).then(j=>{if(!j.link)return toast(j.error||'Не удалось создать счёт');
