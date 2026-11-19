@@ -1470,7 +1470,8 @@ async function shareCard(uid){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)r
  ${story?'<button class="btn stars big" style="margin-top:12px" data-a="shareStory">📸 В сторис</button>':''}<button class="btn acc big" style="margin-top:8px" data-a="shareChat">💬 Отправить друзьям</button>${TG?'':'<button class="btn" style="width:100%;margin-top:8px" data-a="shareSave">💾 Сохранить картинку</button>'}<button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)}
 
 /* ---------- NFT-карточки трофеев (TON, выпуск через Getgems) ---------- */
-let NFT_STARS=75,TCUI=null,nftPollT=0;
+let NFT_STARS=75,NFT_PRICE_OK=false,TCUI=null,nftPollT=0;
+function nftPrice(then){if(!online())return;api('/api/nft',{}).then(j=>{if(j&&j.stars>0){const ch=NFT_STARS!==j.stars;NFT_STARS=j.stars;NFT_PRICE_OK=true;if(ch&&then)then()}}).catch(()=>{})}
 function crc16x(b){let c=0;for(const x of b){c^=x<<8;for(let i=0;i<8;i++)c=c&0x8000?((c<<1)^0x1021)&0xffff:(c<<1)&0xffff}return c}
 function tonFriendly(raw){const m=/^(-?\d+):([0-9a-fA-F]{64})$/.exec(raw||'');if(!m)return raw;const b=new Uint8Array(36);b[0]=0x51;b[1]=(+m[1])&255;for(let i=0;i<32;i++)b[2+i]=parseInt(m[2].substr(i*2,2),16);const c=crc16x(b.slice(0,34));b[34]=c>>8;b[35]=c&255;return btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_')}
 function tonValid(a){a=(a||'').trim();if(/^-?[01]:[0-9a-fA-F]{64}$/.test(a))return true;if(!/^[A-Za-z0-9_\-+/]{48}$/.test(a))return false;try{const b=Uint8Array.from(atob(a.replace(/-/g,'+').replace(/_/g,'/')),ch=>ch.charCodeAt(0));return b.length===36&&crc16x(b.slice(0,34))===((b[34]<<8)|b[35])}catch(e){return false}}
@@ -1481,7 +1482,7 @@ function nftBlock(c){if(c.tier==='common')return'';const st=nftOf(c);
  if(st==='problem')return `<div class="hint h-bad" style="margin-top:8px">💎 Выпуск NFT не удался. Напиши в бот команду /paysupport — вернём звёзды.</div>`;
  if(st)return `<div class="hint h-mid" style="margin-top:8px">⏳ NFT выпускается в блокчейне TON — обычно до 10 минут.</div><button class="btn" style="width:100%;margin-top:6px" data-a="nftSync">Обновить статус</button>`;
  return `<button class="btn pri" style="width:100%;margin-top:8px" data-a="nftStart" data-v="${c.uid}">💎 Выпустить NFT в TON · ${NFT_STARS} ⭐</button>`}
-function nftModal(uid,fresh){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)return;if(online()&&!fresh){api('/api/nft',{}).then(j=>{if(j&&j.stars>0)NFT_STARS=j.stars}).catch(()=>{}).finally(()=>nftModal(uid,true));return}const a=S.tonAddr||'',ok=tonValid(a);
+function nftModal(uid,fresh){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)return;if(online()&&!fresh){api('/api/nft',{}).then(j=>{if(j&&j.stars>0){NFT_STARS=j.stars;NFT_PRICE_OK=true}}).catch(()=>{}).finally(()=>nftModal(uid,true));return}const a=S.tonAddr||'',ok=tonValid(a);
  modal(`<div style="text-align:center"><div style="font-size:44px">💎</div><h2>NFT-карточка трофея</h2></div>
  <div class="sm" style="line-height:1.5">Карточка станет настоящим NFT в блокчейне TON: она будет в твоём кошельке, её можно продать или подарить на маркетплейсе Getgems. Комиссию сети платим мы.</div>
  <div class="panel" style="margin-top:10px"><b class="sm">Кошелёк TON</b>${ok?`<div style="margin:6px 0;font-family:monospace">${esc(shortAddr(a))} <span style="color:var(--grn)">✓</span></div>`:''}
@@ -1541,7 +1542,7 @@ async function nftPay(uid){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)retu
  toast('Готовим карточку…');let img;try{img=(await drawNftCard(c)).toDataURL('image/jpeg',.86)}catch(e){return toast('Не удалось нарисовать карточку')}
  const card={uid:c.uid,fid:c.fid,w:c.w,tier:c.tier,sn:c.sn,base:c.base,loc:c.loc,date:c.date,rod:c.rod,bait:c.bait};
  payStars('nft','NFT-карточка трофея',NFT_STARS,null,{nft:{card,owner:a,img}})}
-function nftSync(quiet){if(!online())return;api('/api/nft',{}).then(j=>{if(!j||!j.orders)return;if(j.stars>0)NFT_STARS=j.stars;let ch=false,pend=false;
+function nftSync(quiet){if(!online())return;api('/api/nft',{}).then(j=>{if(!j||!j.orders)return;if(j.stars>0){NFT_STARS=j.stars;NFT_PRICE_OK=true}let ch=false,pend=false;
  j.orders.forEach(o=>{const c=(S.cards||[]).find(x=>x.uid===o.card);if(!c)return;const was=nftOf(c);c.nft={status:o.status,url:o.url,address:o.address};if(was!==o.status){ch=true;if(o.status==='ready')toast(`💎 NFT готов: ${FISH[c.fid].n} ${kg(c.w)}!`)}if(o.status==='paid'||o.status==='sent')pend=true});
  if(ch){save();if($('#mbox')&&window._cardOpen)ACT.cardView(window._cardOpen)}
  clearTimeout(nftPollT);if(pend)nftPollT=setTimeout(()=>nftSync(true),20000)}).catch(()=>{})}
@@ -1760,7 +1761,7 @@ const ACT={
  speed(){S.speed=S.speed===1?5:S.speed===5?20:1;render()},
  locFish(){const loc=curLoc();modal(`<h2>${loc.n}</h2><div class="sm mut">Здесь водится:</div><div class="list">${loc.fish.map(([id])=>{const f=FISH[id],r=S.rec[id];return `<div class="it" ${r?`data-a="fishInfo" data-v="${id}"`:''}>${fishPic(f,!r)}<div class="n">${r?f.n:'??? неизвестная рыба'}<small>${r?'Берёт на: '+f.b.map(b=>BAITS[b].e).join(' ')+' · '+f.d[0]+'–'+f.d[1]+' м':'Поймай, чтобы узнать'}</small></div></div>`}).join('')}</div><button class="btn" style="width:100%;margin-top:10px" data-a="close">Закрыть</button>`)},
  fishInfo(v){modal(fishInfoHTML(FISH[v]))},
- cardView(v){const c=(S.cards||[]).find(x=>x.uid===v);if(!c)return;window._cardOpen=v;modal(`<div style="text-align:center">${cardHTML(c,true)}</div><button class="btn stars" style="width:100%;margin-top:12px" data-a="shareCard" data-v="${c.uid}">📣 Похвастаться</button>${nftBlock(c)}<button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)},
+ cardView(v){const c=(S.cards||[]).find(x=>x.uid===v);if(!c)return;window._cardOpen=v;if(!NFT_PRICE_OK)nftPrice(()=>{if(window._cardOpen===v&&$('#mbox')&&$('#mbox').innerText.includes('Выпустить NFT'))ACT.cardView(v)});modal(`<div style="text-align:center">${cardHTML(c,true)}</div><button class="btn stars" style="width:100%;margin-top:12px" data-a="shareCard" data-v="${c.uid}">📣 Похвастаться</button>${nftBlock(c)}<button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)},
  help(){S.seenHelp=true;save();modal(`<h2>Как ловить</h2><div class="sm" style="line-height:1.5">
  1. Нажми <b>«🎯 Забросить»</b> и коснись воды — куда ткнёшь, туда и полетит (в пределах дальности удилища). Можно просто ткнуть в воду — заброс сделает свободная снасть.<br>2. Когда поплавок нырнёт или зазвенит колокольчик — жми <b>«ПОДСЕЧЬ!»</b>, пока не поздно.<br>3. Держи <b>«КРУТИТЬ»</b> (или пробел), следи за натяжением. Если шкала краснеет — отпусти кнопку, дай рыбе устать.<br>4. <b>Фрикцион</b> — главный друг: поставь его ниже прочности лески, тогда рыба будет стравливать леску, а не рвать её.<br>5. Глубина и наживка решают всё. Загляни в «📖 Рыба водоёма» — пойманные виды показывают, на что берут.<br>6. У каждой точки своя глубина. Глубомер и эхолот (магазин → «Снаряжение») показывают дно, а эхолот ещё и стаи рыбы.<br>7. Голодным ловить можно, но хуже. Нет денег — ягоды 🌿 (раз в день) и черви 🪱 (3 раза в день) выручат: поймай пару рыб и купи еду.<br>8. Клюнуло на другой удочке, пока вываживаешь? Жми «Подсечь» — рыба подождёт на крючке.<br>9. Рыбу из Красной книги можно только отпустить — зато опыта вдвое больше. Турниры — во вкладке 🏆.</div>
  <div class="row" style="margin-top:12px"><button class="btn pri" style="flex:1" data-a="close">Понятно!</button><button class="btn red" data-a="resetAsk">Сброс</button></div>
@@ -1784,7 +1785,7 @@ document.addEventListener('keyup',e=>{if(e.code==='Space')reeling=false});
 if(RELEASE&&!STARS_API)document.body.classList.add('nopay');
 if(METRIKA_ID){(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym(METRIKA_ID,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});goal('start')}
 try{if(TG){TG.ready();TG.expand();if(TG.disableVerticalSwipes)TG.disableVerticalSwipes();if(TG.setHeaderColor)TG.setHeaderColor('#0b161d');if(TG.setBackgroundColor)TG.setBackgroundColor('#0b161d')}}catch(e){}
-if(STARS_API&&TG)setTimeout(()=>hello(()=>{claimPurchases();if((S.cards||[]).some(c=>c.nft&&c.nft.status!=='ready'))setTimeout(()=>nftSync(true),3000)}),1200);
+if(STARS_API&&TG)setTimeout(()=>hello(()=>{claimPurchases();nftPrice();if((S.cards||[]).some(c=>c.nft&&c.nft.status!=='ready'))setTimeout(()=>nftSync(true),3000)}),1200);
 cloudLoad(c=>{if(c&&(c._t||0)>LOCAL_T){S=Object.assign(DEF(),c);resetRods();render();toast('☁️ Прогресс загружен из облака Telegram')}});
 render();requestAnimationFrame(frame);
 loginCheck();
