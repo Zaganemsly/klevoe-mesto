@@ -1470,7 +1470,7 @@ async function shareCard(uid){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)r
  ${story?'<button class="btn stars big" style="margin-top:12px" data-a="shareStory">📸 В сторис</button>':''}<button class="btn acc big" style="margin-top:8px" data-a="shareChat">💬 Отправить друзьям</button>${TG?'':'<button class="btn" style="width:100%;margin-top:8px" data-a="shareSave">💾 Сохранить картинку</button>'}<button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)}
 
 /* ---------- NFT-карточки трофеев (TON, выпуск через Getgems) ---------- */
-const NFT_STARS=75;let TCUI=null,nftPollT=0;
+let NFT_STARS=75,TCUI=null,nftPollT=0;
 function crc16x(b){let c=0;for(const x of b){c^=x<<8;for(let i=0;i<8;i++)c=c&0x8000?((c<<1)^0x1021)&0xffff:(c<<1)&0xffff}return c}
 function tonFriendly(raw){const m=/^(-?\d+):([0-9a-fA-F]{64})$/.exec(raw||'');if(!m)return raw;const b=new Uint8Array(36);b[0]=0x51;b[1]=(+m[1])&255;for(let i=0;i<32;i++)b[2+i]=parseInt(m[2].substr(i*2,2),16);const c=crc16x(b.slice(0,34));b[34]=c>>8;b[35]=c&255;return btoa(String.fromCharCode(...b)).replace(/\+/g,'-').replace(/\//g,'_')}
 function tonValid(a){a=(a||'').trim();if(/^-?[01]:[0-9a-fA-F]{64}$/.test(a))return true;if(!/^[A-Za-z0-9_\-+/]{48}$/.test(a))return false;try{const b=Uint8Array.from(atob(a.replace(/-/g,'+').replace(/_/g,'/')),ch=>ch.charCodeAt(0));return b.length===36&&crc16x(b.slice(0,34))===((b[34]<<8)|b[35])}catch(e){return false}}
@@ -1481,7 +1481,7 @@ function nftBlock(c){if(c.tier==='common')return'';const st=nftOf(c);
  if(st==='problem')return `<div class="hint h-bad" style="margin-top:8px">💎 Выпуск NFT не удался. Напиши в бот команду /paysupport — вернём звёзды.</div>`;
  if(st)return `<div class="hint h-mid" style="margin-top:8px">⏳ NFT выпускается в блокчейне TON — обычно до 10 минут.</div><button class="btn" style="width:100%;margin-top:6px" data-a="nftSync">Обновить статус</button>`;
  return `<button class="btn pri" style="width:100%;margin-top:8px" data-a="nftStart" data-v="${c.uid}">💎 Выпустить NFT в TON · ${NFT_STARS} ⭐</button>`}
-function nftModal(uid){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)return;const a=S.tonAddr||'',ok=tonValid(a);
+function nftModal(uid,fresh){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)return;if(online()&&!fresh){api('/api/nft',{}).then(j=>{if(j&&j.stars>0)NFT_STARS=j.stars}).catch(()=>{}).finally(()=>nftModal(uid,true));return}const a=S.tonAddr||'',ok=tonValid(a);
  modal(`<div style="text-align:center"><div style="font-size:44px">💎</div><h2>NFT-карточка трофея</h2></div>
  <div class="sm" style="line-height:1.5">Карточка станет настоящим NFT в блокчейне TON: она будет в твоём кошельке, её можно продать или подарить на маркетплейсе Getgems. Комиссию сети платим мы.</div>
  <div class="panel" style="margin-top:10px"><b class="sm">Кошелёк TON</b>${ok?`<div style="margin:6px 0;font-family:monospace">${esc(shortAddr(a))} <span style="color:var(--grn)">✓</span></div>`:''}
@@ -1541,7 +1541,7 @@ async function nftPay(uid){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)retu
  toast('Готовим карточку…');let img;try{img=(await drawNftCard(c)).toDataURL('image/jpeg',.86)}catch(e){return toast('Не удалось нарисовать карточку')}
  const card={uid:c.uid,fid:c.fid,w:c.w,tier:c.tier,sn:c.sn,base:c.base,loc:c.loc,date:c.date,rod:c.rod,bait:c.bait};
  payStars('nft','NFT-карточка трофея',NFT_STARS,null,{nft:{card,owner:a,img}})}
-function nftSync(quiet){if(!online())return;api('/api/nft',{}).then(j=>{if(!j||!j.orders)return;let ch=false,pend=false;
+function nftSync(quiet){if(!online())return;api('/api/nft',{}).then(j=>{if(!j||!j.orders)return;if(j.stars>0)NFT_STARS=j.stars;let ch=false,pend=false;
  j.orders.forEach(o=>{const c=(S.cards||[]).find(x=>x.uid===o.card);if(!c)return;const was=nftOf(c);c.nft={status:o.status,url:o.url,address:o.address};if(was!==o.status){ch=true;if(o.status==='ready')toast(`💎 NFT готов: ${FISH[c.fid].n} ${kg(c.w)}!`)}if(o.status==='paid'||o.status==='sent')pend=true});
  if(ch){save();if($('#mbox')&&window._cardOpen)ACT.cardView(window._cardOpen)}
  clearTimeout(nftPollT);if(pend)nftPollT=setTimeout(()=>nftSync(true),20000)}).catch(()=>{})}
