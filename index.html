@@ -1494,16 +1494,47 @@ async function tonConnect(uid){try{if(!window.TON_CONNECT_UI)await loadScript('h
   TCUI.onStatusChange(w=>{if(w&&w.account){S.tonAddr=tonFriendly(w.account.address);save();toast('🔗 Кошелёк подключён');if(window._nftUid)nftModal(window._nftUid)}})}
  window._nftUid=uid;if(TCUI.connected&&TCUI.account){S.tonAddr=tonFriendly(TCUI.account.address);save();return nftModal(uid)}await TCUI.openModal()}catch(e){toast('Не удалось открыть подключение кошелька — вставь адрес вручную')}}
 async function drawNftCard(c){const f=FISH[c.fid],T=TIERS[c.tier],W=1000,H=1000,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
- const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b1a2b');g.addColorStop(.6,'#123a52');g.addColorStop(1,'#07121d');x.fillStyle=g;x.fillRect(0,0,W,H);
- const rg=x.createRadialGradient(W/2,430,40,W/2,430,460);rg.addColorStop(0,T.c+'aa');rg.addColorStop(1,T.c+'00');x.fillStyle=rg;x.fillRect(0,0,W,H);
- x.strokeStyle=T.c;x.lineWidth=14;x.beginPath();x.roundRect?x.roundRect(28,28,W-56,H-56,48):x.rect(28,28,W-56,H-56);x.stroke();
- x.textAlign='left';x.fillStyle=T.c;x.font='900 42px system-ui,-apple-system,Arial';x.fillText(T.n.toUpperCase(),80,120);x.textAlign='right';x.fillText('№ '+String(c.sn).padStart(3,'0'),W-80,120);
+ const PAL={trophy:{a:'#ffe7a3',b:'#e2a93b',c:'#8a5a12',glow:'#f3b23c',ink:'#ffd27a',icon:'🏆'},rare:{a:'#f1d9ff',b:'#b46cff',c:'#4b1f86',glow:'#b46cff',ink:'#dcb8ff',icon:'💎'},legend:{a:'#fff',b:'#ff4fd8',c:'#3a0f5c',glow:'#ff4fd8',ink:'#ffd6f6',icon:'👑'}}[c.tier]||{a:'#fff',b:'#8ea5af',c:'#334',glow:'#8ea5af',ink:'#fff',icon:'🐟'};
+ const F='system-ui,-apple-system,"Segoe UI",Roboto,Arial',rr=(X,Y,w,h,r)=>{x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath()};
+ const fit=(t,max,size,weight)=>{let s=size;do{x.font=`${weight} ${s}px ${F}`;s-=2}while(x.measureText(t).width>max&&s>14);return t};
+ const metal=(X0,Y0,X1,Y1)=>{if(c.tier==='legend'&&x.createConicGradient){const g=x.createConicGradient(0,W/2,H/2);['#ff4fd8','#ffb84a','#fff36b','#5cffb0','#4fc3ff','#9b6bff','#ff4fd8'].forEach((col,i,a)=>g.addColorStop(i/(a.length-1),col));return g}const g=x.createLinearGradient(X0,Y0,X1,Y1);g.addColorStop(0,PAL.a);g.addColorStop(.35,PAL.b);g.addColorStop(.6,PAL.a);g.addColorStop(1,PAL.c);return g};
+ // фон: глубина
+ let g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0d2a44');g.addColorStop(.55,'#0a1d33');g.addColorStop(1,'#040b16');x.fillStyle=g;x.fillRect(0,0,W,H);
+ // лучи света сверху
+ x.save();x.globalCompositeOperation='lighter';for(let i=0;i<7;i++){const cx=180+i*110,gr=x.createLinearGradient(cx,0,cx+60,620);gr.addColorStop(0,'rgba(170,220,255,.10)');gr.addColorStop(1,'rgba(170,220,255,0)');x.fillStyle=gr;x.beginPath();x.moveTo(cx-20,0);x.lineTo(cx+40,0);x.lineTo(cx+140+i*12,640);x.lineTo(cx+40+i*12,640);x.closePath();x.fill()}x.restore();
+ // свечение ранга
+ g=x.createRadialGradient(W/2,400,30,W/2,400,430);g.addColorStop(0,PAL.glow+'cc');g.addColorStop(.45,PAL.glow+'44');g.addColorStop(1,PAL.glow+'00');x.fillStyle=g;x.fillRect(0,0,W,H);
+ // пузырьки
+ let seed=0;for(const ch of c.uid)seed=(seed*31+ch.charCodeAt(0))>>>0;const rnd=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+ for(let i=0;i<26;i++){const bx=80+rnd()*840,by=120+rnd()*520,br=2+rnd()*7;x.strokeStyle=`rgba(200,235,255,${.15+rnd()*.35})`;x.lineWidth=1.5;x.beginPath();x.arc(bx,by,br,0,7);x.stroke()}
+ // искры для редких и легенд
+ if(c.tier!=='trophy')for(let i=0;i<18;i++){const sx=90+rnd()*820,sy=150+rnd()*480,s=3+rnd()*7;x.fillStyle=`rgba(255,255,255,${.4+rnd()*.5})`;x.beginPath();x.moveTo(sx,sy-s);x.lineTo(sx+s*.25,sy-s*.25);x.lineTo(sx+s,sy);x.lineTo(sx+s*.25,sy+s*.25);x.lineTo(sx,sy+s);x.lineTo(sx-s*.25,sy+s*.25);x.lineTo(sx-s,sy);x.lineTo(sx-s*.25,sy-s*.25);x.fill()}
+ // виньетка
+ g=x.createRadialGradient(W/2,H/2,350,W/2,H/2,720);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');x.fillStyle=g;x.fillRect(0,0,W,H);
+ // рыба
  let src;const ph=fishPic(f);const m=/src="([^"]+)"/.exec(ph);if(m)src=m[1];else{let svg=fishSVG(f);if(!/xmlns=/.test(svg))svg=svg.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}))}
- try{const im=await loadImg(src);const bw=760,bh=Math.min(420,bw*im.height/(im.width||1)||330);x.drawImage(im,(W-bw)/2,410-bh/2,bw,bh)}catch(e){}
- x.textAlign='center';x.fillStyle='#fff';x.font='900 72px system-ui,-apple-system,Arial';x.fillText(f.n,W/2,700);
- x.fillStyle='#ffd27a';x.font='900 118px system-ui,-apple-system,Arial';x.fillText(kg(c.w),W/2,830);
- x.fillStyle='#b9cad3';x.font='500 32px system-ui,-apple-system,Arial';x.fillText(`${c.base}${c.loc?' · '+c.loc:''} · ${c.date}`.slice(0,58),W/2,895);
- x.fillStyle='#fff8e6';x.font='800 30px system-ui,-apple-system,Arial';x.fillText('Клёвое место 🎣',W/2,945);return cv}
+ try{const im=await loadImg(src);const bw=780,bh=Math.min(400,bw*im.height/(im.width||1)||320),fx=(W-bw)/2,fy=395-bh/2;
+  x.save();x.globalAlpha=.35;x.fillStyle='#000';x.filter='blur(18px)';x.beginPath();x.ellipse(W/2,fy+bh+18,bw*.36,22,0,0,7);x.fill();x.restore();
+  x.save();x.shadowColor=PAL.glow;x.shadowBlur=40;x.drawImage(im,fx,fy,bw,bh);x.restore();x.drawImage(im,fx,fy,bw,bh)}catch(e){}
+ // нижняя панель
+ g=x.createLinearGradient(0,590,0,H);g.addColorStop(0,'rgba(4,11,22,0)');g.addColorStop(.25,'rgba(4,11,22,.85)');g.addColorStop(1,'rgba(4,11,22,.97)');x.fillStyle=g;x.fillRect(0,580,W,H-580);
+ x.textAlign='center';x.textBaseline='alphabetic';
+ fit(f.n,760,62,900);x.fillStyle='#ffffff';x.shadowColor='rgba(0,0,0,.6)';x.shadowBlur=12;x.fillText(f.n,W/2,676);x.shadowBlur=0;
+ const wt=kg(c.w);x.font=`900 128px ${F}`;g=x.createLinearGradient(0,700,0,810);g.addColorStop(0,'#fff6d6');g.addColorStop(.5,PAL.ink);g.addColorStop(1,PAL.b);x.fillStyle=g;x.lineWidth=8;x.strokeStyle='rgba(0,0,0,.55)';x.strokeText(wt,W/2,804);x.fillText(wt,W/2,804);
+ // характеристики
+ const dt=/^\d{4}-\d\d-\d\d$/.test(c.date||'')?c.date.split('-').reverse().join('.'):c.date;const st=[['📍',c.base],['⚓',c.loc],['🗓️',dt]].filter(s=>s[1]);const bw2=258,gap=14,sx0=(W-(bw2*st.length+gap*(st.length-1)))/2;
+ st.forEach((s,i)=>{const bx=sx0+i*(bw2+gap);rr(bx,840,bw2,62,18);x.fillStyle='rgba(255,255,255,.07)';x.fill();x.strokeStyle='rgba(255,255,255,.14)';x.lineWidth=2;x.stroke();let t=s[0]+' '+s[1],fs=24;x.font=`600 24px ${F}`;while(x.measureText(t).width>bw2-26&&fs>18){fs--;x.font=`600 ${fs}px ${F}`}while(x.measureText(t).width>bw2-26&&t.length>4)t=t.slice(0,-2)+'…';if(t.endsWith('……'))t=t.slice(0,-1);x.fillStyle='#d9e6ee';x.fillText(t,bx+bw2/2,879)});
+ // рамка
+ x.lineWidth=18;x.strokeStyle=metal(0,0,W,H);rr(22,22,W-44,H-44,56);x.stroke();
+ x.lineWidth=2.5;x.strokeStyle='rgba(255,255,255,.35)';rr(44,44,W-88,H-88,40);x.stroke();
+ // уголки
+ x.fillStyle=metal(0,0,W,H);[[64,64],[W-64,64],[64,H-64],[W-64,H-64]].forEach(([px,py])=>{x.save();x.translate(px,py);x.rotate(Math.PI/4);x.fillRect(-9,-9,18,18);x.restore()});
+ // плашка ранга и номер
+ x.textAlign='left';const rk=`${PAL.icon} ${T.n.toUpperCase()}`;x.font=`900 30px ${F}`;const rw=x.measureText(rk).width+44;rr(78,76,rw,58,29);x.fillStyle=metal(78,76,78+rw,134);x.fill();x.fillStyle=c.tier==='legend'?'#2a0a3a':'#1d1300';x.fillText(rk,100,116);
+ x.textAlign='right';x.font=`900 34px ${F}`;x.fillStyle=PAL.ink;x.fillText('№ '+String(c.sn).padStart(3,'0'),W-90,116);
+ // бренд
+ x.textAlign='center';x.font=`800 22px ${F}`;x.fillStyle='rgba(255,248,230,.85)';x.fillText('КЛЁВОЕ МЕСТО  ·  '+c.uid.toUpperCase(),W/2,938);
+ return cv}
 async function nftPay(uid){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)return;const inp=$('#tonAddr');const a=((inp&&inp.value)||S.tonAddr||'').trim();
  if(!tonValid(a))return toast('Проверь адрес кошелька TON — он неверный');S.tonAddr=a;save();
  if(!online()){window._grant=()=>{c.nft={status:'ready',url:'https://getgems.io'};save();toast('💎 Тест: NFT «выпущен»')};return payStars('nft','NFT-карточка: '+FISH[c.fid].n,NFT_STARS,window._grant)}
