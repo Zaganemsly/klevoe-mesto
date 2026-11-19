@@ -1094,6 +1094,18 @@ function frame(now){
  }
  requestAnimationFrame(frame);
 }
+function tenRGB(k){k=clamp(k,0,1);const st=[[0,[232,244,255]],[.55,[232,244,255]],[.75,[255,210,122]],[.9,[255,120,70]],[1,[255,60,50]]];let a=st[0],b=st[st.length-1];for(let j=0;j<st.length-1;j++)if(k>=st[j][0]&&k<=st[j+1][0]){a=st[j];b=st[j+1];break}const u=b[0]>a[0]?(k-a[0])/(b[0]-a[0]):0;return a[1].map((v,j)=>Math.round(v+(b[1][j]-v)*u))}
+function drawRod(ctx,bx,by,x1,y1,x2,y2,tx,ty,base,glowCol,glowK,lim){
+ const P=u=>{const v=1-u;return[v*v*v*bx+3*v*v*u*x1+3*v*u*u*x2+u*u*u*tx,v*v*v*by+3*v*v*u*y1+3*v*u*u*y2+u*u*u*ty]};const N=18,pts=[];for(let j=0;j<=N;j++)pts.push(P(j/N));
+ ctx.lineCap='round';
+ if(glowK>0){ctx.save();ctx.shadowColor=`rgba(${glowCol},${.9*glowK})`;ctx.shadowBlur=6+16*glowK;ctx.strokeStyle=`rgba(${glowCol},${.35*glowK})`;ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(...pts[4]);for(let j=5;j<=N;j++)ctx.lineTo(...pts[j]);ctx.stroke();ctx.restore()}
+ for(let j=0;j<N;j++){const u=j/N;ctx.strokeStyle=base;ctx.lineWidth=4.6-3.4*u;ctx.beginPath();ctx.moveTo(...pts[j]);ctx.lineTo(...pts[j+1]);ctx.stroke()}
+ if(glowK>0){for(let j=4;j<N;j++){const u=(j-4)/(N-4);ctx.strokeStyle=`rgba(${glowCol},${glowK*(.35+.65*u)})`;ctx.lineWidth=(4.6-3.4*j/N)*.55;ctx.beginPath();ctx.moveTo(...pts[j]);ctx.lineTo(...pts[j+1]);ctx.stroke()}}
+ if(lim){ctx.strokeStyle='rgba(255,246,200,.55)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(...pts[2]);for(let j=3;j<=N;j++)ctx.lineTo(...pts[j]);ctx.stroke()}
+ ctx.fillStyle='rgba(220,225,230,.85)';for(const j of [7,11,14,16]){const[a,b]=pts[j];ctx.beginPath();ctx.arc(a,b,1.3,0,7);ctx.fill()}
+ ctx.strokeStyle='#2a1a10';ctx.lineWidth=6.5;ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(...pts[2]);ctx.stroke();
+ ctx.fillStyle='#8a8f96';const[rx,ry]=pts[3];ctx.beginPath();ctx.arc(rx,ry,3.4,0,7);ctx.fill();
+ return pts[N]}
 function drawRods(ctx,W,H,hor,t){
  const n=slotsAllowed(),L=light(S.time/60);
  for(let i=0;i<n;i++){
@@ -1105,15 +1117,23 @@ function drawRods(ctx,W,H,hor,t){
   let floatX=(r.xf!=null?r.xf:.5)*W,floatY=hor+(H-hor)*(.08+.55*(1-Math.min(1,r.df!=null?r.df:.25)));
   if(r.st==='wait'&&r.fly<1){r.fly=Math.min(1,(r.fly||0)+.045);const k=r.fly;const lx=tx+(floatX-tx)*k,ly=ty+(floatY-ty)*k-Math.sin(k*Math.PI)*60;ctx.strokeStyle='rgba(235,245,255,.5)';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(lx,ly);ctx.stroke();ctx.fillStyle='#e8402a';ctx.beginPath();ctx.arc(lx,ly,2.5,0,7);ctx.fill();if(k>=1){r.splash=t}continue}
   if(r.splash&&t-r.splash<1){const ph=t-r.splash;ctx.strokeStyle=`rgba(255,255,255,${1-ph})`;ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(floatX,floatY,4+ph*22,(4+ph*22)*.3,0,0,7);ctx.stroke()}
-  if(fighting){const F=FIGHT,k=clamp(F.dist/F.d0,0,1.6);floatX=W*.5+(floatX-W*.5)*Math.min(1,k)+Math.sin(t*2.3+F.ph)*W*.08*Math.min(1,k);floatY=H*.86-(H*.86-floatY)*Math.min(1,k)+Math.sin(t*3.1)*3;const bend=clamp(F.ten/F.limit,0,1.2);tx+=(floatX-tx)*.12*bend;ty+=18*bend}
-  ctx.strokeStyle=rod.lim?'#e8c25a':sh('#2a2a2a',Math.max(.5,L));ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(bx,H+6);ctx.quadraticCurveTo((bx+tx)/2,(H+ty)/2+(fighting?14:2),tx,ty);ctx.stroke();
-  ctx.strokeStyle='#2a1a10';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(bx,H+6);ctx.lineTo(bx+(tx-bx)*.12,H+6+(ty-H-6)*.12);ctx.stroke();
+  if(fighting){const F=FIGHT,k=clamp(F.dist/F.d0,0,1.6);floatX=W*.5+(floatX-W*.5)*Math.min(1,k)+Math.sin(t*2.3+F.ph)*W*.08*Math.min(1,k);floatY=H*.86-(H*.86-floatY)*Math.min(1,k)+Math.sin(t*3.1)*3}
+  // изгиб удилища: плавно тянется к натяжению лески
+  const tgt=fighting?clamp(FIGHT.ten/FIGHT.limit,0,1.15):(r.st==='bite'?.12+Math.abs(Math.sin(t*9))*.08:(r.st==='wait'?.04:0));
+  r.bend=(r.bend||0)+(tgt-(r.bend||0))*.18;const bend=r.bend;
+  const by=H+6,len=Math.hypot(tx-bx,ty-by),dx=floatX-tx,dy=floatY-ty,dl=Math.hypot(dx,dy)||1;
+  const shake=fighting&&bend>.85?Math.sin(t*55)*2.2*(bend-.85)/.3:0;
+  const side=Math.abs(dx/dl)>.15?Math.sign(dx):(r.xf!=null&&r.xf<.5?-1:1);
+  const ntx=tx+side*len*.27*bend+shake,nty=ty+len*.20*bend*bend+len*.05*bend;
+  const x1=bx+(tx-bx)*.45,y1=by+(ty-by)*.45,x2=bx+(tx-bx)*.85+side*len*.08*bend,y2=by+(ty-by)*.85-len*.04*bend;
+  const glowK=fighting?clamp((bend-.35)/.6,0,1):0,gc=tenRGB(fighting?clamp(FIGHT.ten/FIGHT.limit,0,1):0).join(',');
+  [tx,ty]=drawRod(ctx,bx,by,x1,y1,x2,y2,ntx,nty,rod.lim?'#e8c25a':sh('#2a2a2a',Math.max(.5,L)),gc,glowK,rod.lim);
   if(rod.k==='feeder'||rod.k==='bottom'){ctx.fillStyle='#f0c040';ctx.beginPath();ctx.arc(tx,ty+4,2.6,0,7);ctx.fill()}
   if(r.st==='idle')continue;
   if(curLoc().sc.near==='ice'&&r.xf!=null){const hx=r.xf*W,hy=hor+(H-hor)*(.08+.55*(1-Math.min(1,r.df)));const hs=4+(hy-hor)/(H-hor)*10;ctx.fillStyle='#d8e6f0';ctx.beginPath();ctx.ellipse(hx,hy+1,hs*1.5,hs*.55,0,0,7);ctx.fill();ctx.fillStyle='#1a3448';ctx.beginPath();ctx.ellipse(hx,hy+1,hs,hs*.36,0,0,7);ctx.fill()}
   const ten=fighting?clamp(FIGHT.ten/FIGHT.limit,0,1):0;
-  ctx.strokeStyle=fighting?(ten>.85?'#ff6a5a':ten>.6?'#ffd27a':'#e8f4ff'):'rgba(235,245,255,.55)';ctx.lineWidth=fighting?1.2:.8;
-  ctx.beginPath();ctx.moveTo(tx,ty);ctx.quadraticCurveTo((tx+floatX)/2,(ty+floatY)/2+(fighting?(1-ten)*20:16),floatX,floatY);ctx.stroke();
+  if(fighting){const c=tenRGB(ten).join(',');ctx.save();if(ten>.55){ctx.shadowColor=`rgba(${c},.9)`;ctx.shadowBlur=4+10*(ten-.55)/.45}ctx.strokeStyle=`rgb(${c})`;ctx.lineWidth=1.2+ten*.6}else{ctx.save();ctx.strokeStyle='rgba(235,245,255,.55)';ctx.lineWidth=.8}
+  ctx.beginPath();ctx.moveTo(tx,ty);ctx.quadraticCurveTo((tx+floatX)/2,(ty+floatY)/2+(fighting?(1-ten)*20:16),floatX,floatY);ctx.stroke();ctx.restore();
   if(fighting){const fs=fishSize(FIGHT.w);ctx.strokeStyle=FIGHT.tier!=='common'?'rgba(255,215,110,.85)':'rgba(255,255,255,.7)';ctx.lineWidth=1.2;for(let k=0;k<3;k++){const ph=(t*1.6+k/3)%1;ctx.globalAlpha=1-ph;ctx.beginPath();ctx.ellipse(floatX,floatY,6+ph*(14+fs),(6+ph*(14+fs))*.3,0,0,7);ctx.stroke()}ctx.globalAlpha=1;if(Math.sin(t*5+FIGHT.ph)>.6){ctx.fillStyle='rgba(255,255,255,.8)';for(let k=0;k<5;k++)ctx.fillRect(floatX-8+Math.random()*16,floatY-4-Math.random()*8,2,2)}continue}
   const bob=Math.sin(t*2+i)*1.2;
   if(rod.k==='float'&&r.laid&&r.st==='wait'){ctx.fillStyle='#e8402a';ctx.beginPath();ctx.ellipse(floatX-2,floatY,4.5,1.6,0,0,7);ctx.fill();ctx.fillStyle='#f4f4f4';ctx.beginPath();ctx.ellipse(floatX+3,floatY,3,1.5,0,0,7);ctx.fill()}
