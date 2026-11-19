@@ -68,6 +68,14 @@ input[type=range]{flex:1;accent-color:var(--blu)}
 .msg{font-size:13px;min-height:18px;text-align:center;margin:6px 0;color:var(--acc)}
 h2{font-size:18px;margin:4px 0 10px}
 h3{font-size:15px;margin:14px 0 8px;color:var(--mut);font-weight:500}
+.lb{display:flex;flex-direction:column;gap:4px}.lbr{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#0f2230}.lbr.me{background:linear-gradient(90deg,#3a2a0a,#1b2a3a);border:1px solid var(--acc)}.lbp{width:30px;font-weight:800}.lbn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reflink{background:#0a1820;border:1px dashed var(--line);border-radius:10px;padding:10px;font-size:13px;word-break:break-all;text-align:center}
+.stat{flex:1;background:#0f2230;border-radius:10px;padding:8px;text-align:center}.stat b{display:block;font-size:17px}.stat span{font-size:11px;color:var(--mut)}
+.sl{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}.slh,.slr{display:grid;grid-template-columns:30px 1fr 1fr;gap:6px;align-items:stretch}.slh{font-size:12px;color:var(--mut);padding:0 4px}
+.slr{opacity:.6}.slr.ok{opacity:1}.sln{display:grid;place-items:center;font-weight:800;background:#0f2230;border-radius:8px}
+.slc{background:var(--pan);border:1px solid var(--line);border-radius:10px;padding:7px;font-size:11.5px;line-height:1.35;display:flex;flex-direction:column;gap:5px;justify-content:space-between}.slc.pr{background:linear-gradient(135deg,#2a1d06,#24123a);border-color:#a3843a}.slc.lk{filter:grayscale(.5)}.slc em{font-style:normal;color:var(--grn);font-weight:800}.slc .btn{padding:5px;font-size:12px}
+.starter{background:linear-gradient(135deg,#3a2306,#2a1250);border:1.5px solid var(--g1)}.badge2{background:var(--grn);color:#062;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:800}
+.evtabs{display:grid!important;grid-template-columns:repeat(4,1fr);gap:5px!important;margin-top:2px}.evtabs button{padding:8px 2px!important;font-size:12.5px!important;text-align:center}
 .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px;scrollbar-width:none}
 .tabs button{padding:7px 11px;border-radius:999px;background:var(--pan);border:1px solid var(--line);white-space:nowrap;font-size:13px}
 .tabs button.on{background:var(--acc);color:#1d1300;border-color:var(--acc);font-weight:700}
@@ -930,8 +938,8 @@ function biteHint0(b){if(b.frac>.45)return['h-good','Клёв отличный']
 function toast(t){const box=$('#toast');while(box.children.length>=2)box.firstChild.remove();const d=document.createElement('div');d.innerHTML=t;box.appendChild(d);setTimeout(()=>d.remove(),2800)}
 function modal(html){$('#mbox').innerHTML=html;$('#modal').classList.add('on')}
 function closeModal(){$('#modal').classList.remove('on')}
-function addXP(x){S.xp+=Math.round(x);let up=false;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;up=true;const gift=S.lvl*500;S.money+=gift;setTimeout(()=>toast(`🎁 Награда за уровень: +${money(gift)}`),600);if(S.lvl%5===0){S.potions=S.potions||{};S.potions.giant=(S.potions.giant||0)+1;S.spinTok=(S.spinTok||0)+1;setTimeout(()=>toast('🎁 Юбилейный уровень: Отвар великана + вращение Колеса Шамана'),1200)}}
- if(up){goal('level',{lvl:S.lvl});toast(`⭐ Новый уровень: <b>${S.lvl}</b>`);if(S.lvl===4||S.lvl===10)toast('🎣 Открыта ещё одна снасть!');const nb=BASES.find(b=>b.lvl===S.lvl);if(nb)toast(`🗺️ Открыт водоём: <b>${nb.n}</b>`)}}
+function addXP(x){S.xp+=Math.round(x);let up=false;const lv0=S.lvl;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;up=true;const gift=S.lvl*500;S.money+=gift;setTimeout(()=>toast(`🎁 Награда за уровень: +${money(gift)}`),600);if(S.lvl%5===0){S.potions=S.potions||{};S.potions.giant=(S.potions.giant||0)+1;S.spinTok=(S.spinTok||0)+1;setTimeout(()=>toast('🎁 Юбилейный уровень: Отвар великана + вращение Колеса Шамана'),1200)}}
+ if(up){hello();if(S.lvl>=3&&!S.starter&&!S.starterShown)setTimeout(starterOffer,2500);goal('level',{lvl:S.lvl});toast(`⭐ Новый уровень: <b>${S.lvl}</b>`);if(S.lvl===4||S.lvl===10)toast('🎣 Открыта ещё одна снасть!');const nb=BASES.find(b=>b.lvl===S.lvl);if(nb)toast(`🗺️ Открыт водоём: <b>${nb.n}</b>`)}}
 function resetRods(){RT.forEach(r=>{r.st='idle'});FIGHT=null;reeling=false}
 
 let AIM=null,AIMPT=null;
@@ -984,6 +992,7 @@ function showCatch(f,w,i){
  const xp=(8+w*18)*T.x+(isNew?40:0);const fits=netW()+w<=netCap();
  const card=tier!=='common'?newCard(f,w,tier,i):null;
  if(S.base==='ny'){const sn=1+({trophy:5,rare:15,legend:50}[tier]||0)+(f.id==='zolotaya'?100:0);S.snow=(S.snow||0)+sn;setTimeout(()=>toast(`❄️ +${sn} снежинок`),500);if(f.id==='zolotaya'){const m=Math.round(20000*lvlK());S.money+=m;addPot('giant',1);setTimeout(()=>toast(`🐠 Золотая рыбка исполнила желание: +${money(m)} и Отвар великана!`),900)}}
+ sPts({common:1,trophy:5,rare:12,legend:30}[tier]||1);reportCatch(f,w,tier,isRec||isNew);
  qProg('count',1);qProg('kg',w);qProg('species',1,f.id);if(tier!=='common')qProg('trophy',1);
  if(S.tour){const T=TOUR[S.tour.id];if(T&&S.base===T.base&&absNow()<=S.tour.end){const v=tourScoreFish(T,f,w);if(v!=null){S.tour.score=T.kind==='sum'?Math.round((S.tour.score+w)*1000)/1000:Math.max(S.tour.score,w);setTimeout(()=>toast('🏆 Улов зачтён в турнир'),300)}}}
  S._pending={id:f.id,w,v:val,xp,tr:tier!=='common',tier};save();
@@ -992,7 +1001,7 @@ function showCatch(f,w,i){
  <div style="margin:8px 0">${card?`<span class="trophy" style="background:${T.c}">🎴 Новая карточка в коллекции</span> `:''}${isNew?'<span class="trophy" style="background:var(--grn)">НОВЫЙ ВИД</span> ':''}${isRec?'<span class="trophy" style="background:var(--blu)">РЕКОРД</span>':''}${f.rb?` <span class="redbook">${f.rbNote||'Красная книга — только отпустить'}</span>`:''}</div>
  ${card?'':`<div class="sm mut">До трофея: ${kg(thr(f).t)}</div>`}
  <div class="mut sm">${f.rb?'Опыт за бережный отпуск ×2':'Цена у скупщика: <b style="color:var(--acc)">'+money(val)+'</b>'+(T.m>1?` (×${T.m} за категорию)`:'')}</div>
- ${card?'<div class="sm mut" style="margin-top:4px">Карточка останется в коллекции, даже если рыбу продать или отпустить.</div>':''}
+ ${card?`<button class="btn stars" style="width:100%;margin-top:8px" data-a="shareCard" data-v="${card.uid}">📣 Похвастаться трофеем</button><div class="sm mut" style="margin-top:4px">Карточка останется в коллекции, даже если рыбу продать или отпустить.</div>`:''}
  <div class="row" style="margin-top:12px">
  ${f.rb?'':`<button class="btn grn" style="flex:1" data-a="keep" ${fits?'':'disabled'}>В садок</button>`}
  <button class="btn ${f.rb?'grn':''}" style="flex:1" data-a="release">Отпустить (+${f.rb?'100':'30'}% опыта)</button></div>
@@ -1166,7 +1175,7 @@ function renderTop(){
  <div class="chip" style="flex:1;min-width:120px">⭐ ${S.lvl}<div class="bar"><i style="width:${S.xp/need*100}%;background:var(--acc)"></i></div></div>
  <button class="chip" data-a="eatMenu" title="Сытость">🍞<div class="bar" style="width:44px"><i style="width:${S.sat}%;background:${S.sat<20?'var(--red)':'var(--grn)'}"></i></div></button>
  <div class="chip">${S.time/60>=21||S.time/60<5?'🌙':'☀️'} ${hhmm(S.time)}<span class="dday"> · д.${S.day}</span></div></div>`;
- const _t=$('#top');if(_t._h!==_h){_t._h=_h;_t.innerHTML=_h}
+ const _t=$('#top');if(_t&&_t._h!==_h){_t._h=_h;_t.innerHTML=_h}
 }
 function render(){
  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
@@ -1271,7 +1280,7 @@ function viewShop(){
  if(shopTab==='baits')items=Object.entries(BAITS).filter(([k,b])=>b.t==='nat'&&!b.lim&&!b.ev).map(([id,b])=>Object.assign({id},b));
  if(shopTab==='lures')items=Object.entries(BAITS).filter(([k,b])=>b.t==='lure'&&!b.lim&&!b.ev).map(([id,b])=>Object.assign({id},b));
  if(shopTab==='food')items=Object.entries(FOOD).map(([id,b])=>Object.assign({id},b));
- if(shopTab==='cash')return h+cashHTML();
+ if(shopTab==='cash')return h+starterHTML()+cashHTML();
  if(shopTab==='pot')return h+`<div class="timer">🔮 <b>Отвары Шамана</b> — временные усиления на 60 игровых минут. Пей перед ночной рыбалкой или охотой за трофеем.</div><div class="panel list">${potionsHTML()}</div>`;
  if(shopTab==='lim'){const now=limNow();
   h+=`<div class="timer">✨ <b>Лимитированные снасти</b> — каждые 3 дня в продаже четыре легендарные вещи. Купленное остаётся навсегда.<br>Смена ассортимента через: <b id="limTimer">${limLeft()}</b></div>`;
@@ -1356,6 +1365,12 @@ function applyPurchase(p){const [kind,id]=p.product.split(':');goal('purchase',{
  if(kind==='potion'){addPot(id,1);toast(`${POTIONS[id].e} ${POTIONS[id].n} — в сумке`)}
  else if(kind==='potset'){for(const k in POTIONS)addPot(k,2);toast('🎒 Набор шамана — в сумке')}
  else if(kind==='lim'){const it=itemOf(id);if(BAITS[id])S.baits[id]=(S.baits[id]||0)+BAITS[id].q;else if(!owns(id))S.own.push(id);toast(`👑 ${it?it.n:id} — твоя!`)}
+ else if(kind==='season'){S.seasonPrem=S.seasonPrem||{};S.seasonPrem[(p.result&&p.result.sid)||sid()]=1;toast('👑 Премиум-дорожка сезона открыта!');if(view==='tour')render()}
+ else if(kind==='starter'){grantStarter()}
+ else if(kind==='gift'){const r=p.result||{};
+  if(id==='refjoin'){S.money+=200000;S.passes=(S.passes||0)+2;modal(`<div style="text-align:center"><div style="font-size:56px">🤝</div><h2>Подарок от друга!</h2><div>💰 200 000 ₽ и 🎫 2 путёвки</div><button class="btn acc" style="width:100%;margin-top:14px" data-a="close">Спасибо!</button></div>`)}
+  else if(id==='ref'){S.money+=300000;addPot('giant',1);S.spinTok=(S.spinTok||0)+1;modal(`<div style="text-align:center"><div style="font-size:56px">🎉</div><h2>${esc(r.name||'Друг')} дошёл до 5 уровня!</h2><div>💰 300 000 ₽ · 🍶 Отвар великана · 🔮 вращение Колеса</div><button class="btn acc" style="width:100%;margin-top:14px" data-a="close">Забрать</button></div>`)}
+  else if(id==='top'){S.money+=r.m||0;S.passes=(S.passes||0)+(r.passes||0);S.spinTok=(S.spinTok||0)+(r.spins||0);if(r.pot)for(const k in POTIONS)addPot(k,r.pot);modal(`<div style="text-align:center"><div style="font-size:56px">${['🥇','🥈','🥉'][r.place-1]||'🏆'}</div><h2>${r.place} место в рейтинге недели!</h2><div>💰 ${money(r.m||0)}${r.passes?` · 🎫×${r.passes}`:''}${r.spins?` · 🔮×${r.spins}`:''}${r.pot?` · 🧪 по ${r.pot} каждого`:''}</div><button class="btn acc" style="width:100%;margin-top:14px" data-a="close">Забрать</button></div>`)}}
  else if(kind==='cash'){const c=CASH.find(x=>x.id===id);if(c){S.money+=c.m;toast(`💰 +${money(c.m)} на счёт`)}}
  else if(kind==='base'){const b=BASE[id];S.unl=S.unl||{};S.unl[id]=true;toast(`🎫 ${b?b.n:id} — открыт навсегда!`)}
  else if(kind==='wheel'){view='tour';wheelMode='paid';render();setTimeout(()=>spin('paid',p.result&&p.result.idx),300)}
@@ -1367,6 +1382,91 @@ function baseOpen(b){return S.lvl>=b.lvl||!!(S.unl&&S.unl[b.id])}
 function needMoney(n){modal(`<div style="text-align:center"><div style="font-size:46px">💰</div><h2>Не хватает ${money(Math.max(0,n-S.money))}</h2><div class="sm mut">Пополни кошелёк звёздами Telegram — 1 000 000 ₽ всего за 150 ⭐</div></div><button class="btn stars" style="width:100%;margin-top:12px" data-a="goCash">⭐ Пополнить рубли</button><button class="btn" style="width:100%;margin-top:8px" data-a="close">Позже</button>`)}
 function cashHTML(){return `<div class="timer">⭐ <b>Рубли за звёзды</b> — мгновенно на счёт. Чем больше пакет, тем выгоднее.</div><div class="grid">${CASH.map(c=>`<div class="card ${c.tag?'lim':''}">${c.tag?`<span class="badge">${c.tag}</span>`:''}<div class="ic" style="font-size:40px">${c.e}</div><div class="nm">${c.n}</div><div class="ds"><b style="font-size:17px;color:var(--g1)">${money(c.m)}</b>${c.bonus?` <span style="color:var(--grn);font-weight:700">${c.bonus}</span>`:''}</div><button class="btn stars" style="width:100%" data-a="buyStars" data-v="cash|${c.id}">${c.stars} ⭐</button></div>`).join('')}</div>`}
 const STAR_LIM=it=>RODS.includes(it)?1490:REELS.includes(it)?990:LINES.includes(it)?690:249;
+
+/* ---------- Онлайн: друзья, рейтинг, сезон, набор новичка, «похвастаться» ---------- */
+const APP_LINK='https://t.me/mrvagerbot/play';
+let evTab='ev',topFish='',TOPC={};
+const online=()=>!!(STARS_API&&TG);
+const TGU=()=>TG&&TG.initDataUnsafe&&TG.initDataUnsafe.user;
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function api(path,body){return fetch(STARS_API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({initData:TG.initData},body||{}))}).then(r=>r.json())}
+function hello(then){if(!online())return then&&then();api('/api/hello',{lvl:S.lvl,cw:S.cw?1:0}).then(j=>{if(j&&j.uid){S.fr={n:j.friends,a:j.active};save();if(view==='tour'&&evTab==='fr')render()}}).catch(()=>{}).finally(()=>then&&then())}
+function refLink(){const u=TGU();return APP_LINK+(u?'?startapp=r'+u.id:'')}
+function shareText(text,link){const url='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(text);if(TG&&TG.openTelegramLink)TG.openTelegramLink(url);else window.open(url,'_blank')}
+function askWrite(){if(!TG||!TG.requestWriteAccess||!(TG.isVersionAtLeast&&TG.isVersionAtLeast('6.9')))return toast('Напоминания работают в Telegram');TG.requestWriteAccess(ok=>{if(ok){S.cw=1;save();hello();toast('🔔 Напоминания включены');render()}})}
+function reportCatch(f,w,tier,isRec,tries){if(!online()||(tier==='common'&&!isRec))return;api('/api/catch',{fish:f.id,w,r:Math.min(1,w/f.w[1]),base:S.base}).then(j=>{if(j&&j.slow&&(tries||0)<3)setTimeout(()=>reportCatch(f,w,tier,isRec,(tries||0)+1),9000)}).catch(()=>{})}
+function weekLeft(){const d=new Date(Date.now()+3*3600e3),day=(d.getUTCDay()+6)%7;const end=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()-day+7)-3*3600e3;const h=Math.max(0,Math.floor((end-Date.now())/3600e3));return `${Math.floor(h/24)} д ${h%24} ч`}
+/* --- рейтинг --- */
+function loadTop(force){if(!online())return;const k=topFish||'all',c=TOPC[k];if(!force&&c&&(c.loading||Date.now()-c.t<30000))return;TOPC[k]={...(c||{}),loading:true,t:Date.now()};
+ api('/api/top',{fish:topFish}).then(j=>{TOPC[k]={d:j,t:Date.now()};if(view==='tour'&&evTab==='top')render()}).catch(()=>{TOPC[k]={err:1,t:Date.now()};if(view==='tour'&&evTab==='top')render()})}
+function viewTop(){const kinds=Object.keys(S.rec||{}).filter(id=>FISH[id]).sort((a,b)=>FISH[a].n.localeCompare(FISH[b].n,'ru'));
+ let h=`<div class="panel"><div class="row" style="justify-content:space-between"><b style="font-size:16px">🏆 Рейтинг рыбаков недели</b><span class="sm mut">до итогов: ${weekLeft()}</span></div>
+ <div class="sm mut" style="margin:4px 0 8px">Очки — сумма лучших уловов по каждому виду: рыба весом с рекорд вида = 100 очков. В зачёт идут трофеи и личные рекорды. Топ-10 в понедельник получают призы.</div>
+ <div class="tabs"><button class="${topFish?'':'on'}" data-a="topFish" data-v="">Общий зачёт</button>${kinds.map(id=>`<button class="${topFish===id?'on':''}" data-a="topFish" data-v="${id}">${FISH[id].n}</button>`).join('')}</div>`;
+ if(!online())return h+`<div class="hint h-mid">Рейтинг живых игроков работает, когда игра открыта в Telegram.</div></div>`;
+ const c=TOPC[topFish||'all'];loadTop();
+ if(!c||!c.d)return h+`<div class="sm mut" style="padding:14px 0;text-align:center">${c&&c.err?'Нет связи с сервером':'Загружаем рейтинг…'}</div></div>`;
+ const d=c.d,medal=i=>['🥇','🥈','🥉'][i]||(i+1)+'.';
+ h+=d.top.length?`<div class="lb">${d.top.map((x,i)=>`<div class="lbr ${x.me?'me':''}"><span class="lbp">${medal(i)}</span><span class="lbn">${esc(x.name)}${x.me?' (ты)':''}</span><b>${topFish?kg(x.w):Math.round(x.pts)+' оч.'}</b></div>`).join('')}</div>`:'<div class="sm mut" style="padding:12px 0">На этой неделе ещё никто не отметился — стань первым!</div>';
+ h+=`<div class="sm" style="margin-top:8px">${d.me?`Твоё место: <b>${d.me.pos}</b> · ${topFish?kg(d.me.w):Math.round(d.me.pts)+' очков'}`:'Тебя пока нет в рейтинге — поймай трофей!'} <span class="mut">· рыбаков: ${d.players}</span></div></div>`;
+ if(!topFish)h+=`<div class="panel"><b>Призы недели</b>${(d.prizes||[]).map((p,i)=>`<div class="row sm" style="justify-content:space-between;margin-top:4px"><span>${medal(i)} место</span><span>${money(p.m)}${p.passes?` · 🎫×${p.passes}`:''}${p.spins?` · 🔮×${p.spins}`:''}${p.pot?` · 🧪 по ${p.pot} каждого`:''}</span></div>`).join('')}</div>`;
+ return h}
+/* --- друзья --- */
+function viewFriends(){const fr=S.fr||{n:0,a:0};
+ return `<div class="panel"><b style="font-size:16px">🤝 Позови друзей на рыбалку</b>
+ <div class="sm" style="margin:8px 0;line-height:1.5">🎁 Друг сразу получает <b>200 000 ₽ и 2 путёвки</b>.<br>🏆 Ты получаешь <b>300 000 ₽, Отвар великана и вращение Колеса</b> за каждого друга, который дойдёт до 5 уровня. Без ограничений!</div>
+ <div class="reflink">${esc(online()?refLink():APP_LINK)}</div>
+ <div class="row" style="margin-top:8px"><button class="btn acc" style="flex:1" data-a="invite">📨 Пригласить</button><button class="btn" style="flex:1" data-a="copyRef">📋 Копировать</button></div>
+ <div class="row" style="margin-top:12px;gap:8px"><div class="stat"><b>${fr.n}</b><span>пришли</span></div><div class="stat"><b>${fr.a}</b><span>дошли до 5 ур.</span></div><div class="stat"><b>${money(fr.a*300000)}</b><span>заработано</span></div></div></div>
+ <div class="panel"><b>🔔 Напоминания</b><div class="sm mut" style="margin:4px 0 8px">Бот напишет, когда Колесо снова бесплатное, пришли призы недели или друг дошёл до 5 уровня. Не чаще раза в сутки.</div>${S.cw?'<div class="sm" style="color:var(--grn)">✓ Включены</div>':'<button class="btn pri" style="width:100%" data-a="askWrite">Включить напоминания</button>'}</div>`}
+/* --- сезонный пропуск --- */
+const SEASON_LV=30,SEASON_STEP=40,MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+function sid(){const d=new Date(Date.now()+3*3600e3);return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')}
+function seasonS(){const k=sid();if(!S.season||S.season.sid!==k)S.season={sid:k,pts:0,f:[],p:[]};return S.season}
+function seasonPrem(){return !!(S.seasonPrem&&S.seasonPrem[sid()])}
+function seasonLv(){return Math.min(SEASON_LV,Math.floor(seasonS().pts/SEASON_STEP))}
+function sPts(n){const s=seasonS(),b=seasonLv();s.pts+=n;const a=seasonLv();if(a>b)setTimeout(()=>toast(`🧭 Сезон: уровень ${a}! Награда ждёт в «События → Сезон»`),900)}
+function seasonRw(lv,prem){
+ if(!prem){if(lv%10===0)return{passes:1,spin:1};if(lv%5===0)return{pot:'giant'};return{m:Math.round((12000+lv*2500)*lvlK())}}
+ if(lv===30)return{lim:1};if(lv===15)return{bait:'dragon'};if(lv%10===0)return{passes:2,spin:2,m:1000000};if(lv%5===0)return{potset:1};if(lv%3===0)return{passes:1};if(lv%2===0)return{pot:['bite','luck','power','giant'][lv%4]};return{m:150000+lv*10000}}
+function seasonLimItem(){return RODS.find(it=>it.lim&&!owns(it.id))}
+function rwLabel(r){const a=[];if(r.m)a.push('💰 '+money(r.m));if(r.pot)a.push(POTIONS[r.pot].e+' '+POTIONS[r.pot].n);if(r.potset)a.push('🎒 Набор отваров');if(r.passes)a.push('🎫×'+r.passes);if(r.spin)a.push('🔮×'+r.spin);if(r.bait)a.push(ITEM[r.bait]?ITEM[r.bait].e+' '+ITEM[r.bait].n:r.bait);if(r.lim){const it=seasonLimItem();a.push(it?'👑 '+it.n:'💰 '+money(5000000))}return a.join(' · ')}
+function grantRw(r){if(r.m)S.money+=r.m;if(r.pot)addPot(r.pot,1);if(r.potset)for(const k in POTIONS)addPot(k,1);if(r.passes)S.passes=(S.passes||0)+r.passes;if(r.spin)S.spinTok=(S.spinTok||0)+r.spin;if(r.bait)S.baits[r.bait]=(S.baits[r.bait]||0)+(BAITS[r.bait]?BAITS[r.bait].q:1);if(r.lim){const it=seasonLimItem();if(it)S.own.push(it.id);else S.money+=5000000}}
+function seasonDaysLeft(){const d=new Date(Date.now()+3*3600e3);const end=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)-3*3600e3;return Math.max(0,Math.ceil((end-Date.now())/864e5))}
+function viewSeason(){const s=seasonS(),lv=seasonLv(),prem=seasonPrem(),inLv=s.pts-lv*SEASON_STEP;const m=MONTHS[+s.sid.slice(5)-1];
+ let h=`<div class="panel season"><div class="row" style="justify-content:space-between"><b style="font-size:16px">🧭 Сезон «${m}»</b><span class="sm mut">ещё ${seasonDaysLeft()} дн.</span></div>
+ <div class="row" style="margin:8px 0 4px;justify-content:space-between"><b>Уровень ${lv} / ${SEASON_LV}</b><span class="sm mut">${lv<SEASON_LV?`${inLv} / ${SEASON_STEP} очков`:'Максимум!'}</span></div><div class="bar"><i style="width:${lv<SEASON_LV?inLv/SEASON_STEP*100:100}%"></i></div>
+ <div class="sm mut" style="margin-top:6px">Очки сезона: рыба +1, трофей +5, редкий +12, легенда +30, задание +10, вход в игру +5.</div>
+ ${prem?'<div class="hint h-good" style="margin-top:8px">👑 Премиум-дорожка открыта</div>':`<button class="btn stars big" style="margin-top:10px" data-a="buyStars" data-v="season|1">👑 Премиум-дорожка · 299 ⭐</button><div class="sm mut" style="text-align:center;margin-top:4px">Премиум-награды за пройденные уровни можно забрать сразу. На 30 уровне — лимитная удочка.</div>`}</div>
+ <div class="sl"><div class="slh"><span>Ур.</span><span>Бесплатно</span><span>👑 Премиум</span></div>`;
+ for(let i=1;i<=SEASON_LV;i++){const ok=lv>=i,f=seasonRw(i,false),p=seasonRw(i,true),gf=s.f.includes(i),gp=s.p.includes(i);
+  h+=`<div class="slr ${ok?'ok':''}"><span class="sln">${i}</span><div class="slc">${rwLabel(f)}${gf?'<em>✓</em>':ok?`<button class="btn acc sm" data-a="sClaim" data-v="f${i}">Забрать</button>`:''}</div><div class="slc pr ${prem?'':'lk'}">${rwLabel(p)}${gp?'<em>✓</em>':ok&&prem?`<button class="btn stars sm" data-a="sClaim" data-v="p${i}">Забрать</button>`:prem?'':'<em>🔒</em>'}</div></div>`}
+ return h+'</div>'}
+/* --- набор новичка --- */
+const STARTER={m:1500000,passes:3,spin:3};
+function starterHTML(){if(S.starter)return'';return `<div class="panel starter"><div class="row" style="gap:12px"><div style="font-size:44px">🎁</div><div style="flex:1"><b style="font-size:16px">Набор новичка</b> <span class="badge2">×5 выгоды</span><div class="sm" style="margin-top:4px;line-height:1.45">💰 1 500 000 ₽ · 🧪 4 отвара · 🎫 3 путёвки · 🔮 3 вращения · 🐉 Блесна «Чешуя Дракона»</div></div></div><button class="btn stars big" style="margin-top:10px" data-a="buyStars" data-v="starter|1">Забрать за 99 ⭐</button><div class="sm mut" style="text-align:center;margin-top:4px">Можно купить только один раз</div></div>`}
+function starterOffer(){if(S.starter||S.starterShown)return;S.starterShown=1;save();modal(starterHTML()+'<button class="btn" style="width:100%;margin-top:8px" data-a="close">Не сейчас</button>')}
+function grantStarter(){S.starter=1;S.money+=STARTER.m;for(const k in POTIONS)addPot(k,1);S.passes=(S.passes||0)+STARTER.passes;S.spinTok=(S.spinTok||0)+STARTER.spin;S.baits.dragon=(S.baits.dragon||0)+(BAITS.dragon?BAITS.dragon.q:1);modal(`<div style="text-align:center"><div style="font-size:56px">🎁</div><h2>Набор новичка — твой!</h2><div class="sm" style="line-height:1.6">💰 ${money(STARTER.m)}<br>🧪 по отвару каждого вида<br>🎫 3 путёвки · 🔮 3 вращения Колеса<br>🐉 Блесна «Чешуя Дракона»</div><button class="btn acc" style="width:100%;margin-top:14px" data-a="close">Ловить!</button></div>`)}
+/* --- похвастаться трофеем --- */
+function loadImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src})}
+async function drawShareCard(c){const f=FISH[c.fid],T=TIERS[c.tier],W=720,H=1280,cv=document.createElement('canvas');cv.width=W;cv.height=H;const x=cv.getContext('2d');
+ const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b1a2b');g.addColorStop(.55,'#123a52');g.addColorStop(1,'#07121d');x.fillStyle=g;x.fillRect(0,0,W,H);
+ const rg=x.createRadialGradient(W/2,560,40,W/2,560,420);rg.addColorStop(0,T.c+'aa');rg.addColorStop(1,T.c+'00');x.fillStyle=rg;x.fillRect(0,0,W,H);
+ x.strokeStyle=T.c;x.lineWidth=10;x.beginPath();x.roundRect?x.roundRect(30,30,W-60,H-60,40):x.rect(30,30,W-60,H-60);x.stroke();
+ x.textAlign='center';x.fillStyle='#fff8e6';x.font='900 58px system-ui,-apple-system,Arial';x.fillText('Клёвое место 🎣',W/2,140);
+ x.fillStyle=T.c;x.font='800 40px system-ui,-apple-system,Arial';x.fillText(T.n.toUpperCase(),W/2,215);
+ let src;const ph=fishPic(f);const m=/src="([^"]+)"/.exec(ph);if(m)src=m[1];else{let svg=fishSVG(f);if(!/xmlns=/.test(svg))svg=svg.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');src=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}))}
+ try{const im=await loadImg(src);const bw=600,bh=Math.min(420,bw*im.height/(im.width||1)||300);x.drawImage(im,(W-bw)/2,560-bh/2,bw,bh)}catch(e){x.font='200px serif';x.fillText('🐟',W/2,620)}
+ x.fillStyle='#fff';x.font='900 64px system-ui,-apple-system,Arial';x.fillText(f.n,W/2,860);
+ x.fillStyle='#ffd27a';x.font='900 120px system-ui,-apple-system,Arial';x.fillText(kg(c.w),W/2,990);
+ x.fillStyle='#b9cad3';x.font='500 32px system-ui,-apple-system,Arial';x.fillText(`📍 ${c.base}${c.loc?' · '+c.loc:''}`.slice(0,40),W/2,1060);x.fillText(`🗓️ ${c.date}  ·  № ${String(c.sn).padStart(3,'0')}`,W/2,1105);
+ x.fillStyle='#fff8e6';x.font='800 34px system-ui,-apple-system,Arial';x.fillText('Побьёшь мой рекорд?',W/2,1170);x.fillStyle='#ffd27a';x.font='700 30px system-ui,-apple-system,Arial';x.fillText(APP_LINK.replace('https://',''),W/2,1215);
+ return cv}
+async function shareCard(uid){const c=(S.cards||[]).find(x=>x.uid===uid);if(!c)return;const f=FISH[c.fid];let cv;try{cv=await drawShareCard(c)}catch(e){return toast('Не удалось нарисовать карточку')}
+ const img=cv.toDataURL('image/jpeg',.88);window._shareImg=img;window._shareTxt=`Поймал ${f.n} на ${kg(c.w)} в «Клёвом месте»! 🎣 Сможешь больше?`;
+ const story=online()&&TG.shareToStory&&TG.isVersionAtLeast&&TG.isVersionAtLeast('7.8');
+ modal(`<div style="text-align:center"><img src="${img}" style="width:62%;border-radius:14px;box-shadow:0 6px 20px #0008"></div>
+ ${story?'<button class="btn stars big" style="margin-top:12px" data-a="shareStory">📸 В сторис</button>':''}<button class="btn acc big" style="margin-top:8px" data-a="shareChat">💬 Отправить друзьям</button>${TG?'':'<button class="btn" style="width:100%;margin-top:8px" data-a="shareSave">💾 Сохранить картинку</button>'}<button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)}
 
 /* ---------- Колесо Шамана ---------- */
 const dkey=(d)=>{d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -1434,7 +1534,7 @@ const rwText=r=>r.m?money(r.m):r.pot?POTIONS[r.pot].e+' '+POTIONS[r.pot].n:'🔮
 function qName(q){const T=QT.find(x=>x.t===q.t);return T.n(q.goal,q.sp)}
 const STREAK=[{m:1000},{m:3000},{pot:'bite'},{m:8000},{spin:1},{pot:'giant'},{m:30000,spin:2}];
 function loginCheck(){const d=dkey(),y=dkey(new Date(Date.now()-864e5));S.login=S.login||{last:'',streak:0};if(S.login.last===d)return;
- S.login.streak=S.login.last===y?S.login.streak%7+1:1;S.login.last=d;const r=STREAK[S.login.streak-1];const k=lvlK();let txt=[];
+ S.login.streak=S.login.last===y?S.login.streak%7+1:1;S.login.last=d;sPts(5);const r=STREAK[S.login.streak-1];const k=lvlK();let txt=[];
  if(r.m){const m=Math.round(r.m*k);S.money+=m;txt.push(money(m))}if(r.pot){addPot(r.pot,1);txt.push(POTIONS[r.pot].e+' '+POTIONS[r.pot].n)}if(r.spin){S.spinTok=(S.spinTok||0)+r.spin;txt.push(`🔮 вращений Колеса: ${r.spin}`)}save();
  const showL=h=>{if($('#modal').classList.contains('on'))window._queued=h;else modal(h)};setTimeout(()=>showL(`<div style="text-align:center"><h2>Награда за вход · день ${S.login.streak} из 7</h2><div class="streak">${STREAK.map((s,i)=>`<span class="${i<S.login.streak?'on':''}">${i+1}</span>`).join('')}</div><div style="font-size:16px;font-weight:700;margin:10px 0">${txt.join(' · ')}</div><div class="sm mut">Заходи каждый день — на 7-й день главный приз.</div><button class="btn acc" style="width:100%;margin-top:12px" data-a="close">Забрать</button></div>`),200)}
 function updateNavDot(){const b=document.querySelector('#nav [data-v="tour"]');if(!b)return;const Q=questsToday();const ready=freeSpinReady()||Q.list.some(q=>q.prog>=q.goal&&!q.claimed);b.classList.toggle('dot',ready)}
@@ -1495,8 +1595,10 @@ function nyBlock(){const d=dkey();const live=d>=NY.start&&d<=NY.end;
  ${S.base==='ny'?'<button class="btn" style="width:100%" data-a="nav" data-v="fish">🎣 Ты на базе — ловить</button>':`<button class="btn acc" style="width:100%" data-a="travel" data-v="ny">Поехать на базу · ${money(BASE.ny.cost)}</button>`}
  <h3 style="margin-top:12px">Новогодняя ярмарка</h3><div class="list">${NYSHOP.map((it,i)=>{const own=it.id&&owns(it.id);return `<div class="it"><span style="font-size:24px">${it.e}</span><div class="n">${it.n}</div>${own?'<span class="sm" style="color:var(--grn)">✓ есть</span>':`<button class="btn" data-a="nyBuy" data-v="${i}" ${(S.snow||0)<it.c?'disabled':''}>❄️ ${it.c}</button>`}</div>`}).join('')}</div>
  <button class="btn stars" style="width:100%;margin-top:10px" data-a="nyChest">🎁 Сундук Деда Мороза · 149 ⭐</button></div>`}
-function viewEvents(){const Q=questsToday();const W=WHEELS[wheelMode];const tot=W.reduce((a,w)=>a+w.p,0);
- let h=`<h2>События</h2>${nyBlock()}<div class="panel wheelbox"><div class="row" style="justify-content:space-between"><b style="font-size:16px">🔮 Колесо Шамана</b><span class="sm mut">🎫 путёвок: ${S.passes||0}</span></div>
+function viewEvents(){const tabs=`<div class="tabs evtabs">${[['ev','🎁 События'],['top','🏆 Рейтинг'],['season','🧭 Сезон'],['fr','🤝 Друзья']].map(([k,n])=>`<button class="${evTab===k?'on':''}" data-a="evTab" data-v="${k}">${n}</button>`).join('')}</div>`;
+ if(evTab==='top')return tabs+viewTop();if(evTab==='season')return tabs+viewSeason();if(evTab==='fr')return tabs+viewFriends();
+ const Q=questsToday();const W=WHEELS[wheelMode];const tot=W.reduce((a,w)=>a+w.p,0);
+ let h=`${tabs}${S.starter?'':starterHTML()}${nyBlock()}<div class="panel wheelbox"><div class="row" style="justify-content:space-between"><b style="font-size:16px">🔮 Колесо Шамана</b><span class="sm mut">🎫 путёвок: ${S.passes||0}</span></div>
  <div class="tabs" style="margin-top:8px"><button class="${wheelMode==='free'?'on':''}" data-a="wheelMode" data-v="free">Бесплатное</button><button class="${wheelMode==='paid'?'on':''} lim paidonly" data-a="wheelMode" data-v="paid">Шаманское · 99 ⭐</button></div>
  <div class="wheelwrap"><div class="pointer"><svg viewBox="0 0 36 44" width="34" height="42"><defs><linearGradient id="wpt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b8"/><stop offset=".5" stop-color="#e2ae3c"/><stop offset="1" stop-color="#8a5a12"/></linearGradient></defs><path d="M18 42 L4 14 A14 14 0 1 1 32 14 Z" fill="url(#wpt)" stroke="#5a3a0a" stroke-width="1.5"/><circle cx="18" cy="14" r="5.5" fill="#6a2fb0" stroke="#fff3b8" stroke-width="1.5"/></svg></div>${wheelSVG(wheelMode)}</div>
  ${wheelMode==='free'?(freeSpinReady()?`<button class="btn acc big" data-a="spinFree">Крутить бесплатно${(S.spinTok||0)>0&&S.wheelDay===dkey()?` (жетонов: ${S.spinTok})`:''}</button>`:'<button class="btn big" disabled>Следующее бесплатное вращение — завтра</button>'):`<button class="btn stars big" data-a="spinPaid">Крутить за 99 ⭐</button><div class="sm mut" style="text-align:center;margin-top:4px">Каждое 10-е шаманское вращение — гарантированная лимитная снасть (до гарантии: ${STARS_API&&typeof S.pityLeft==='number'?S.pityLeft:10-(S.pity||0)})</div>`}
@@ -1526,15 +1628,27 @@ const ACT={
  buyStars(v){const [kind,id]=v.split('|');
   if(kind==='potion'){const p=POTIONS[id];payStars('potion:'+id,p.n,p.stars,()=>{addPot(id,1);toast(`${p.e} ${p.n} — в сумке`)})}
   if(kind==='potset')payStars('potset','Набор шамана (8 отваров)',199,()=>{for(const k in POTIONS)addPot(k,2);toast('🎒 Набор шамана — в сумке')});
+  if(kind==='season'){if(seasonPrem())return toast('Премиум уже открыт');payStars('season','Сезонный пропуск «'+MONTHS[+sid().slice(5)-1]+'»',299,()=>{S.seasonPrem=S.seasonPrem||{};S.seasonPrem[sid()]=1;toast('👑 Премиум-дорожка открыта!');render()})}
+  if(kind==='starter'){if(S.starter)return toast('Набор уже куплен');payStars('starter','Набор новичка',99,()=>grantStarter())}
   if(kind==='cash'){const c=CASH.find(x=>x.id===id);payStars('cash:'+id,c.n+' — '+money(c.m),c.stars,()=>{S.money+=c.m;toast(`💰 +${money(c.m)} на счёт`)})}
   if(kind==='base'){const b=BASE[id];payStars('base:'+id,'Пропуск: '+b.n,BASE_STARS(b),()=>{S.unl=S.unl||{};S.unl[id]=true;toast(`🎫 ${b.n} — открыт навсегда!`)})}
   if(kind==='lim'){const it=itemOf(id);payStars('lim:'+id,it.n,STAR_LIM(it),()=>{if(BAITS[id])S.baits[id]=(S.baits[id]||0)+BAITS[id].q;else if(!owns(id))S.own.push(id);toast(`👑 ${it.n} — твоя!`)})}},
+ evTab(v){evTab=v;render();if(v==='top')loadTop(true)},
+ topFish(v){topFish=v;render()},
+ invite(){shareText('Погнали на рыбалку в «Клёвое место»! 🎣 По моей ссылке сразу 200 000 ₽ и 2 путёвки.',refLink())},
+ copyRef(){const t=online()?refLink():APP_LINK;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('📋 Ссылка скопирована')).catch(()=>toast(t))},
+ askWrite(){askWrite()},
+ sClaim(v){const prem=v[0]==='p',i=+v.slice(1),s=seasonS();if(seasonLv()<i)return;const arr=prem?s.p:s.f;if(arr.includes(i))return;if(prem&&!seasonPrem())return;const r=seasonRw(i,prem);const label=rwLabel(r);grantRw(r);arr.push(i);save();renderTop();render();toast('🧭 '+label)},
+ shareCard(v){shareCard(v)},
+ shareStory(){const img=window._shareImg;toast('Готовим сторис…');api('/api/card',{img}).then(j=>{if(!j.url)return toast(j.error||'Не удалось загрузить картинку');TG.shareToStory(j.url,{text:(window._shareTxt+' '+refLink()).slice(0,200)});goal('share',{to:'story'})}).catch(()=>toast('Нет связи с сервером'))},
+ shareChat(){shareText(window._shareTxt,refLink());goal('share',{to:'chat'})},
+ shareSave(){const a=document.createElement('a');a.href=window._shareImg;a.download='klevoe-trophy.jpg';a.click()},
  goCash(){closeModal();shopTab='cash';ACT.nav('shop')},
  testGrant(){const g=window._grant;window._grant=null;closeModal();if(g){g();save();render()}},
  wheelMode(v){if(spinning)return;wheelMode=v;render()},
  spinFree(){if(spinning||!freeSpinReady())return;if(S.wheelDay!==dkey())S.wheelDay=dkey();else S.spinTok--;save();spin('free')},
  spinPaid(){if(spinning)return;payStars('wheel','Шаманское вращение Колеса',99,()=>setTimeout(()=>spin('paid'),300))},
- qClaim(v){const Q=questsToday(),q=Q.list[+v];if(!q||q.claimed||q.prog<q.goal)return;q.claimed=true;const r=q.rw;if(r.m)S.money+=r.m;if(r.pot)addPot(r.pot,1);if(r.spin)S.spinTok=(S.spinTok||0)+1;toast(`🎁 ${rwText(r)}`);
+ qClaim(v){const Q=questsToday(),q=Q.list[+v];if(!q||q.claimed||q.prog<q.goal)return;q.claimed=true;const r=q.rw;if(r.m)S.money+=r.m;if(r.pot)addPot(r.pot,1);if(r.spin)S.spinTok=(S.spinTok||0)+1;sPts(10);toast(`🎁 ${rwText(r)}`);
   if(!Q.bonus&&Q.list.every(x=>x.claimed)){Q.bonus=true;addPot('giant',1);setTimeout(()=>toast('🏅 Все задания дня! Бонус: 🍶 Отвар великана'),700)}save();render()},
  tourJoin(v){const T=TOUR[v];if(!T||S.tour)return;if(S.lvl<T.lvl)return;if(S.base!==T.base)return toast(`Турнир проходит на водоёме «${BASE[T.base].n}» — сначала поезжай туда (Карта)`);if(S.money<T.fee)return toast('Не хватает на взнос');S.money-=T.fee;tourStart(T);toast(`🏆 Турнир «${T.n}» начался! ${tourKind(T)}`);save();view='fish';render()},
  goShop(v){shopTab=v||'gear';ACT.nav('shop')},
@@ -1563,7 +1677,7 @@ const ACT={
  speed(){S.speed=S.speed===1?5:S.speed===5?20:1;render()},
  locFish(){const loc=curLoc();modal(`<h2>${loc.n}</h2><div class="sm mut">Здесь водится:</div><div class="list">${loc.fish.map(([id])=>{const f=FISH[id],r=S.rec[id];return `<div class="it" ${r?`data-a="fishInfo" data-v="${id}"`:''}>${fishPic(f,!r)}<div class="n">${r?f.n:'??? неизвестная рыба'}<small>${r?'Берёт на: '+f.b.map(b=>BAITS[b].e).join(' ')+' · '+f.d[0]+'–'+f.d[1]+' м':'Поймай, чтобы узнать'}</small></div></div>`}).join('')}</div><button class="btn" style="width:100%;margin-top:10px" data-a="close">Закрыть</button>`)},
  fishInfo(v){modal(fishInfoHTML(FISH[v]))},
- cardView(v){const c=(S.cards||[]).find(x=>x.uid===v);if(!c)return;modal(`<div style="text-align:center">${cardHTML(c,true)}</div><button class="btn pri" style="width:100%;margin-top:12px" data-a="cardCopy" data-v="${c.uid}">Скопировать метаданные NFT (TON, TEP-64)</button><pre id="nftjson" style="display:none;white-space:pre-wrap;font-size:11px;background:#0a1820;border-radius:8px;padding:8px;margin-top:8px;max-height:180px;overflow:auto"></pre><button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)},
+ cardView(v){const c=(S.cards||[]).find(x=>x.uid===v);if(!c)return;modal(`<div style="text-align:center">${cardHTML(c,true)}</div><button class="btn stars" style="width:100%;margin-top:12px" data-a="shareCard" data-v="${c.uid}">📣 Похвастаться</button><button class="btn pri" style="width:100%;margin-top:8px" data-a="cardCopy" data-v="${c.uid}">Скопировать метаданные NFT (TON, TEP-64)</button><pre id="nftjson" style="display:none;white-space:pre-wrap;font-size:11px;background:#0a1820;border-radius:8px;padding:8px;margin-top:8px;max-height:180px;overflow:auto"></pre><button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)},
  cardCopy(v){const c=(S.cards||[]).find(x=>x.uid===v);if(!c)return;const j=JSON.stringify(nftMeta(c),null,2);const pre=$('#nftjson');pre.textContent=j;pre.style.display='block';try{navigator.clipboard.writeText(j).then(()=>toast('📋 Метаданные скопированы'),()=>toast('Скопируй текст вручную'))}catch(e){toast('Скопируй текст вручную')}},
  help(){S.seenHelp=true;save();modal(`<h2>Как ловить</h2><div class="sm" style="line-height:1.5">
  1. Нажми <b>«🎯 Забросить»</b> и коснись воды — куда ткнёшь, туда и полетит (в пределах дальности удилища). Можно просто ткнуть в воду — заброс сделает свободная снасть.<br>2. Когда поплавок нырнёт или зазвенит колокольчик — жми <b>«ПОДСЕЧЬ!»</b>, пока не поздно.<br>3. Держи <b>«КРУТИТЬ»</b> (или пробел), следи за натяжением. Если шкала краснеет — отпусти кнопку, дай рыбе устать.<br>4. <b>Фрикцион</b> — главный друг: поставь его ниже прочности лески, тогда рыба будет стравливать леску, а не рвать её.<br>5. Глубина и наживка решают всё. Загляни в «📖 Рыба водоёма» — пойманные виды показывают, на что берут.<br>6. У каждой точки своя глубина. Глубомер и эхолот (магазин → «Снаряжение») показывают дно, а эхолот ещё и стаи рыбы.<br>7. Голодным ловить можно, но хуже. Нет денег — ягоды 🌿 (раз в день) и черви 🪱 (3 раза в день) выручат: поймай пару рыб и купи еду.<br>8. Клюнуло на другой удочке, пока вываживаешь? Жми «Подсечь» — рыба подождёт на крючке.<br>9. Рыбу из Красной книги можно только отпустить — зато опыта вдвое больше. Турниры — во вкладке 🏆.</div>
@@ -1588,7 +1702,7 @@ document.addEventListener('keyup',e=>{if(e.code==='Space')reeling=false});
 if(RELEASE&&!STARS_API)document.body.classList.add('nopay');
 if(METRIKA_ID){(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym(METRIKA_ID,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});goal('start')}
 try{if(TG){TG.ready();TG.expand();if(TG.disableVerticalSwipes)TG.disableVerticalSwipes();if(TG.setHeaderColor)TG.setHeaderColor('#0b161d');if(TG.setBackgroundColor)TG.setBackgroundColor('#0b161d')}}catch(e){}
-if(STARS_API&&TG)setTimeout(()=>claimPurchases(),1500);
+if(STARS_API&&TG)setTimeout(()=>hello(()=>claimPurchases()),1200);
 cloudLoad(c=>{if(c&&(c._t||0)>LOCAL_T){S=Object.assign(DEF(),c);resetRods();render();toast('☁️ Прогресс загружен из облака Telegram')}});
 render();requestAnimationFrame(frame);
 loginCheck();
