@@ -622,11 +622,22 @@ const LOCAL_T=S._t||0;
 function save(){S._t=Date.now();try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
 const cloudOK=()=>!!(TG&&TG.CloudStorage&&TG.isVersionAtLeast&&TG.isVersionAtLeast('6.9'));
 let cloudSlot=null,cloudBusy=false;
-function cloudSave(){if(!cloudOK()||cloudBusy)return;try{const j=JSON.stringify(S);const parts=[];for(let i=0;i<j.length;i+=3800)parts.push(j.slice(i,i+3800));if(parts.length>200)return;
- const slot=cloudSlot==='a'?'b':'a';cloudBusy=true;let left=parts.length;
- parts.forEach((p,i)=>TG.CloudStorage.setItem(slot+i,p,err=>{if(--left===0){TG.CloudStorage.setItem('meta',JSON.stringify({slot,n:parts.length,t:S._t||Date.now()}),()=>{cloudSlot=slot;cloudBusy=false})}}))}catch(e){cloudBusy=false}}
+// Прогресс сравниваем по уровню, опыту и коллекции, а не по времени: так более «свежий», но пустой сейв с другого устройства не затрёт настоящий
+function prog(x){return[x&&x.lvl||1,x&&x.xp||0,((x&&x.cards)||[]).length,x&&x._t||0]}
+function progCmp(a,b){for(let i=0;i<4;i++){if((a[i]||0)!==(b[i]||0))return(a[i]||0)>(b[i]||0)?1:-1}return 0}
+let cloudLast=0,cloudBusyT=0;
+function adoptCloud(c,why){S=Object.assign(DEF(),c);resetRods();save();cloudLast=Date.now();render();toast(why||'☁️ Прогресс загружен из облака Telegram')}
+function cloudWrite(){const j=JSON.stringify(S);const parts=[];for(let i=0;i<j.length;i+=3800)parts.push(j.slice(i,i+3800));if(parts.length>200){cloudBusy=false;return}
+ const slot=cloudSlot==='a'?'b':'a';let left=parts.length,bad=false;
+ parts.forEach((p,i)=>TG.CloudStorage.setItem(slot+i,p,err=>{if(err)bad=true;if(--left===0){if(bad){cloudBusy=false;return}TG.CloudStorage.setItem('meta',JSON.stringify({slot,n:parts.length,t:S._t||Date.now(),p:prog(S)}),err2=>{if(!err2){cloudSlot=slot;cloudLast=Date.now()}cloudBusy=false})}}))}
+function cloudSave(force){if(!cloudOK()||(cloudBusy&&Date.now()-cloudBusyT<15000))return;cloudBusy=true;cloudBusyT=Date.now();
+ try{TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}
+  if(m&&m.p&&progCmp(m.p,prog(S))>0){cloudLoad(c=>{cloudBusy=false;if(c&&progCmp(prog(c),prog(S))>0)adoptCloud(c,'☁️ Загружен прогресс с другого устройства')});return}
+  if(m)cloudSlot=m.slot;cloudWrite()})}catch(e){cloudBusy=false}}
 function cloudLoad(cb){if(!cloudOK())return cb(null);try{TG.CloudStorage.getItem('meta',(e,v)=>{if(e||!v)return cb(null);let m;try{m=JSON.parse(v)}catch(_){return cb(null)}cloudSlot=m.slot;const keys=Array.from({length:m.n},(_,i)=>m.slot+i);
- TG.CloudStorage.getItems(keys,(e2,vals)=>{if(e2||!vals)return cb(null);try{cb(JSON.parse(keys.map(k=>vals[k]||'').join('')))}catch(_){cb(null)}})})}catch(e){cb(null)}}
+ const join=vals=>{try{cb(JSON.parse(keys.map(k=>vals[k]||'').join('')))}catch(_){cb(null)}};
+ if(TG.CloudStorage.getItems)TG.CloudStorage.getItems(keys,(e2,vals)=>{if(e2||!vals)return cb(null);join(vals)});
+ else{const vals={};let left=keys.length;keys.forEach(k=>TG.CloudStorage.getItem(k,(e3,v3)=>{vals[k]=v3||'';if(--left===0)join(vals)}))}})}catch(e){cb(null)}}
 const owns=id=>S.own.includes(id);
 const curLoc=()=>LOC[S.loc];
 const curBase=()=>BASE[S.base];
@@ -1819,7 +1830,9 @@ if(RELEASE&&!STARS_API)document.body.classList.add('nopay');
 if(METRIKA_ID){(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym(METRIKA_ID,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});goal('start')}
 try{if(TG){TG.ready();TG.expand();if(TG.disableVerticalSwipes)TG.disableVerticalSwipes();if(TG.setHeaderColor)TG.setHeaderColor('#0b161d');if(TG.setBackgroundColor)TG.setBackgroundColor('#0b161d')}}catch(e){}
 if(STARS_API&&TG)setTimeout(()=>hello(()=>{claimPurchases();nftPrice();if((S.cards||[]).some(c=>c.nft&&c.nft.status!=='ready'))setTimeout(()=>nftSync(true),3000)}),1200);
-cloudLoad(c=>{if(c&&(c._t||0)>LOCAL_T){S=Object.assign(DEF(),c);resetRods();render();toast('☁️ Прогресс загружен из облака Telegram')}});
+cloudLoad(c=>{if(c&&progCmp(prog(c),prog(S))>0)adoptCloud(c);else setTimeout(()=>cloudSave(),1500)});
+setInterval(()=>{if((S._t||0)>cloudLast)cloudSave()},20000);
+window.addEventListener('pagehide',()=>{save();cloudSave()});
 render();requestAnimationFrame(frame);
 loginCheck();
 if(!S.seenHelp)ACT.help();
