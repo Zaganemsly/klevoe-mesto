@@ -622,9 +622,15 @@ const LOCAL_T=S._t||0;
 function save(){S._t=Date.now();try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
 const cloudOK=()=>!!(TG&&TG.CloudStorage&&TG.isVersionAtLeast&&TG.isVersionAtLeast('6.9'));
 let cloudSlot=null,cloudBusy=false;
-const GAME_V='2026-11-20 · v9';
+const GAME_V='2026-11-20 · v11';
 function fmtT(t){if(!t)return'—';const d=new Date(+t);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
-function cloudStatus(){const el=$('#cloudInfo');if(!el)return;
+async function cloudStatus(){const el=$('#cloudInfo');if(!el)return;
+ const u=TGU();let srv='—';if(online()){try{const j=await api('/api/load',{meta:true});srv=j&&j.p?`ур. <b>${j.p[0]}</b> · ${money(j.money||0)} · трофеев ${j.p[2]} · ${fmtT(j.saved)}`:'пусто'}catch(e){srv='нет связи'}}
+ el.innerHTML=`👤 Аккаунт Telegram: <b>${u?u.id:'—'}</b><br>📱 Здесь: ${sumLine(S)}<br>🗄️ На сервере: ${srv}<br><span id="cloudTg" class="mut">☁️ Облако Telegram: проверяем…</span>`;
+ const ct=$('#cloudTg');if(!ct)return;
+ if(!cloudOK()){ct.textContent='☁️ Облако Telegram недоступно на этом устройстве — работает сервер';return}
+ TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}ct.innerHTML=e?'☁️ Облако Telegram не ответило':(m&&m.p?`☁️ Облако Telegram: ур. ${m.p[0]} · трофеев ${m.p[2]} · ${fmtT(m.t)}`:'☁️ Облако Telegram: пусто')})}
+function cloudStatusOld(){const el=null;if(!el)return;
  if(!cloudOK()){el.innerHTML=`⚠️ Облако Telegram недоступно на этом устройстве${TG?` (Telegram ${esc(TG.version||'?')}, ${esc(TG.platform||'?')})`:' — игра открыта не в Telegram'}. Прогресс хранится только здесь.`;return}
  el.textContent='Проверяем облако…';
  TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}const here=`здесь: <b>ур. ${S.lvl}</b>, ${money(S.money)}, карточек ${(S.cards||[]).length}`;
@@ -635,13 +641,36 @@ function cloudStatus(){const el=$('#cloudInfo');if(!el)return;
 function prog(x){return[x&&x.lvl||1,x&&x.xp||0,((x&&x.cards)||[]).length,x&&x._t||0]}
 function progCmp(a,b){for(let i=0;i<4;i++){if((a[i]||0)!==(b[i]||0))return(a[i]||0)>(b[i]||0)?1:-1}return 0}
 let cloudLast=0,cloudBusyT=0;
-function adoptCloud(c,why){S=Object.assign(DEF(),c);resetRods();save();cloudLast=Date.now();render();toast(why||'☁️ Прогресс загружен из облака Telegram')}
-function cloudWrite(){const j=JSON.stringify(S);const parts=[];for(let i=0;i<j.length;i+=3800)parts.push(j.slice(i,i+3800));if(parts.length>200){cloudBusy=false;return}
- const slot=cloudSlot==='a'?'b':'a';let left=parts.length,bad=false;
- parts.forEach((p,i)=>TG.CloudStorage.setItem(slot+i,p,err=>{if(err)bad=true;if(--left===0){if(bad){cloudBusy=false;return}TG.CloudStorage.setItem('meta',JSON.stringify({slot,n:parts.length,t:S._t||Date.now(),p:prog(S)}),err2=>{if(!err2){cloudSlot=slot;cloudLast=Date.now()}cloudBusy=false})}}))}
+function adoptCloud(c,why){S=Object.assign(DEF(),c);if(!S.sid)S.sid=Math.random().toString(36).slice(2,10);resetRods();save();cloudLast=Date.now();render();toast(why||'☁️ Прогресс загружен из облака Telegram')}
+function cloudWrite(cb){cb=cb||function(){};const j=JSON.stringify(S);const parts=[];for(let i=0;i<j.length;i+=3800)parts.push(j.slice(i,i+3800));if(parts.length>200){cloudBusy=false;return cb(false,'слишком большое сохранение')}
+ const slot=cloudSlot==='a'?'b':'a';let left=parts.length,bad=null,done=false;const fin=(ok,e)=>{if(done)return;done=true;cloudBusy=false;cb(ok,e)};setTimeout(()=>fin(false,'облако не ответило'),15000);
+ parts.forEach((p,i)=>TG.CloudStorage.setItem(slot+i,p,err=>{if(err)bad=err;if(--left===0){if(bad)return fin(false,String(bad));TG.CloudStorage.setItem('meta',JSON.stringify({slot,n:parts.length,t:S._t||Date.now(),p:prog(S)}),err2=>{if(err2)return fin(false,String(err2));cloudSlot=slot;cloudLast=Date.now();fin(true)})}}))}
+/* --- резервная копия на нашем сервере (сжатая), основной способ синхронизации --- */
+async function packS(){const j=JSON.stringify(S);if(window.CompressionStream){try{const st=new Blob([j]).stream().pipeThrough(new CompressionStream('gzip'));const buf=new Uint8Array(await new Response(st).arrayBuffer());let bin='';for(let i=0;i<buf.length;i+=0x8000)bin+=String.fromCharCode.apply(null,buf.subarray(i,i+0x8000));return'g:'+btoa(bin)}catch(e){}}return'j:'+j}
+async function unpackS(d){if(d.startsWith('j:'))return JSON.parse(d.slice(2));const u=Uint8Array.from(atob(d.slice(2)),c=>c.charCodeAt(0));const st=new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'));return JSON.parse(await new Response(st).text())}
+let srvLast=0,srvBusy=false,syncAsked=false,srvBase=(()=>{try{return +localStorage.getItem('klevoe_srvbase')||null}catch(e){return null}})();
+function setBase(v){srvBase=v;try{localStorage.setItem('klevoe_srvbase',String(v||''))}catch(e){}}
+async function serverSave(force){if(!online())return{ok:false,error:'игра открыта не в Telegram'};if(srvBusy&&!force)return{ok:false,error:'занято'};srvBusy=true;
+ try{const data=await packS();const j=await api('/api/save',{data,p:prog(S),money:S.money,force:!!force,base:srvBase});if(j&&j.ok){srvLast=Date.now();setBase(j.saved)}else if(j&&(j.newer||j.conflict)&&!force){srvBusy=false;syncCheck()}return j||{ok:false,error:'пустой ответ'}}catch(e){return{ok:false,error:'нет связи с сервером'}}finally{srvBusy=false}}
+async function serverGet(){try{const j=await api('/api/load',{});if(j&&j.data)return{c:await unpackS(j.data),saved:j.saved};return null}catch(e){return null}}
+function sumLine(x){return`ур. <b>${x.lvl||1}</b> · ${money(x.money||0)} · трофеев ${(x.cards||[]).length}`}
+// при старте: сравниваем с копией на сервере (или в облаке); если неясно, что лучше — спрашиваем игрока
+async function syncCheck(){if(!online())return;if(!S.sid){S.sid=Math.random().toString(36).slice(2,10);save()}let r=await serverGet(),from='сервер';
+ if(!r){const c=await new Promise(res=>cloudLoad(res));if(c)r={c,saved:c._t};from='облако'}
+ if(!r){serverSave();return}
+ const c=r.c,pc=prog(c),pl=prog(S),fresh=(S.lvl||1)<=1&&!(S.cards||[]).length&&(S.caught||0)<3;
+ const same=pc[0]===pl[0]&&pc[1]===pl[1]&&pc[2]===pl[2]&&Math.abs((c.money||0)-(S.money||0))<1;
+ if(same){if(c.sid)S.sid=c.sid;if(r.saved)setBase(r.saved);serverSave(true);return}
+ if(fresh){adoptCloud(c,'☁️ Загружен прогресс с другого устройства');if(r.saved)setBase(r.saved);return}
+ // одна и та же «линия» сохранений (уже синхронизировались раньше) — побеждает более свежее
+ if(c.sid&&c.sid===S.sid){if(r.saved&&srvBase&&+r.saved!==+srvBase){adoptCloud(c,'☁️ Загружен прогресс с другого устройства');setBase(r.saved)}else serverSave(true);return}
+ if(syncAsked)return;syncAsked=true;window._syncRemote=c;
+ modal(`<div style="text-align:center"><div style="font-size:44px">☁️</div><h2>Какой прогресс оставить?</h2></div><div class="sm mut" style="margin-bottom:8px">На этом и другом устройстве разный прогресс. Выбери, какой оставить — второй будет заменён.</div>
+ <button class="btn acc big" style="margin-top:6px;text-align:left" data-a="syncKeep">📱 Этот: ${sumLine(S)}<div class="sm" style="opacity:.75">сохранён ${fmtT(S._t)}</div></button>
+ <button class="btn pri big" style="margin-top:8px;text-align:left" data-a="syncTake">🔄 С другого устройства: ${sumLine(c)}<div class="sm" style="opacity:.75">сохранён ${fmtT(c._t)} (${from})</div></button>`)}
 function cloudSave(force){if(!cloudOK()||(cloudBusy&&Date.now()-cloudBusyT<15000))return;cloudBusy=true;cloudBusyT=Date.now();
  try{TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}
-  if(m&&m.p&&progCmp(m.p,prog(S))>0){cloudLoad(c=>{cloudBusy=false;if(c&&progCmp(prog(c),prog(S))>0)adoptCloud(c,'☁️ Загружен прогресс с другого устройства')});return}
+  if(!force&&m&&m.p&&progCmp(m.p,prog(S))>0){cloudBusy=false;return}
   if(m)cloudSlot=m.slot;cloudWrite()})}catch(e){cloudBusy=false}}
 function cloudLoad(cb){if(!cloudOK())return cb(null);try{TG.CloudStorage.getItem('meta',(e,v)=>{if(e||!v)return cb(null);let m;try{m=JSON.parse(v)}catch(_){return cb(null)}cloudSlot=m.slot;const keys=Array.from({length:m.n},(_,i)=>m.slot+i);
  const join=vals=>{try{cb(JSON.parse(keys.map(k=>vals[k]||'').join('')))}catch(_){cb(null)}};
@@ -1815,8 +1844,12 @@ const ACT={
  locFish(){const loc=curLoc();modal(`<h2>${loc.n}</h2><div class="sm mut">Здесь водится:</div><div class="list">${loc.fish.map(([id])=>{const f=FISH[id],r=S.rec[id];return `<div class="it" ${r?`data-a="fishInfo" data-v="${id}"`:''}>${fishPic(f,!r)}<div class="n">${r?f.n:'??? неизвестная рыба'}<small>${r?'Берёт на: '+f.b.map(b=>BAITS[b].e).join(' ')+' · '+f.d[0]+'–'+f.d[1]+' м':'Поймай, чтобы узнать'}</small></div></div>`}).join('')}</div><button class="btn" style="width:100%;margin-top:10px" data-a="close">Закрыть</button>`)},
  fishInfo(v){modal(fishInfoHTML(FISH[v]))},
  cardView(v){const c=(S.cards||[]).find(x=>x.uid===v);if(!c)return;window._cardOpen=v;if(!NFT_PRICE_OK)nftPrice(()=>{if(window._cardOpen===v&&$('#mbox')&&$('#mbox').innerText.includes('Выпустить NFT'))ACT.cardView(v)});modal(`<div style="text-align:center">${cardHTML(c,true)}</div><button class="btn stars" style="width:100%;margin-top:12px" data-a="shareCard" data-v="${c.uid}">📣 Похвастаться</button>${nftBlock(c)}<button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)},
- cloudUp(){if(!cloudOK())return toast('Облако Telegram недоступно на этом устройстве');save();cloudBusy=true;cloudBusyT=Date.now();TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}if(m)cloudSlot=m.slot;cloudWrite();setTimeout(()=>{toast('⬆️ Прогресс отправлен в облако');cloudStatus()},1500)})},
- cloudDown(){if(!cloudOK())return toast('Облако Telegram недоступно на этом устройстве');toast('⬇️ Загружаем…');cloudLoad(c=>{if(!c)return toast('В облаке пусто или оно не ответило');closeModal();adoptCloud(c,'☁️ Прогресс загружен из облака: ур. '+(c.lvl||1))})},
+ async cloudUp(){save();toast('⬆️ Отправляем…');const r=await serverSave(true);let cl='недоступно';if(cloudOK())cl=await new Promise(res=>{cloudBusy=true;cloudBusyT=Date.now();TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}if(m)cloudSlot=m.slot;cloudWrite((ok,err)=>res(ok?'✅':'❌ '+(err||'')))})});
+  modal(`<h2>Отправка прогресса</h2><div class="sm" style="line-height:1.7">${sumLine(S)}<br>🗄️ Сервер: ${r&&r.ok?'✅ сохранено':'❌ '+esc((r&&r.error)||'ошибка')}<br>☁️ Облако Telegram: ${esc(cl)}</div><div class="sm mut" style="margin-top:8px">${r&&r.ok?'Теперь на другом устройстве открой ❓ и нажми «⬇️ Загрузить».':'Сервер недоступен — проверь интернет и попробуй ещё раз.'}</div><button class="btn pri" style="width:100%;margin-top:12px" data-a="close">Ок</button>`)},
+ async cloudDown(){toast('⬇️ Загружаем…');const r=await serverGet();if(r&&r.c){closeModal();adoptCloud(r.c,'⬇️ Загружено с сервера: ур. '+(r.c.lvl||1)+', '+money(r.c.money||0));if(r.saved)setBase(r.saved);return}
+  if(!cloudOK())return toast('На сервере пусто, облако Telegram недоступно');cloudLoad(c=>{if(!c)return toast('Сохранение не найдено — сначала нажми «Отправить» на другом устройстве');closeModal();adoptCloud(c,'⬇️ Загружено из облака: ур. '+(c.lvl||1));serverSave(true)})},
+ syncKeep(){syncAsked=false;closeModal();if(!S.sid)S.sid=Math.random().toString(36).slice(2,10);save();serverSave(true);cloudSave(true);toast('✅ Оставлен прогресс с этого устройства')},
+ syncTake(){syncAsked=false;const c=window._syncRemote;closeModal();if(c){adoptCloud(c,'✅ Загружен прогресс с другого устройства');serverSave(true);cloudSave(true)}},
  help(){S.seenHelp=true;save();setTimeout(cloudStatus,50);modal(`<h2>Как ловить</h2><div class="sm" style="line-height:1.5">
  1. Нажми <b>«🎯 Забросить»</b> и коснись воды — куда ткнёшь, туда и полетит (в пределах дальности удилища). Можно просто ткнуть в воду — заброс сделает свободная снасть.<br>2. Когда поплавок нырнёт или зазвенит колокольчик — жми <b>«ПОДСЕЧЬ!»</b>, пока не поздно.<br>3. Держи <b>«КРУТИТЬ»</b> (или пробел), следи за натяжением. Если шкала краснеет — отпусти кнопку, дай рыбе устать.<br>4. <b>Фрикцион</b> — главный друг: поставь его ниже прочности лески, тогда рыба будет стравливать леску, а не рвать её.<br>5. Глубина и наживка решают всё. Загляни в «📖 Рыба водоёма» — пойманные виды показывают, на что берут.<br>6. У каждой точки своя глубина. Глубомер и эхолот (магазин → «Снаряжение») показывают дно, а эхолот ещё и стаи рыбы.<br>7. Голодным ловить можно, но хуже. Нет денег — ягоды 🌿 (раз в день) и черви 🪱 (3 раза в день) выручат: поймай пару рыб и купи еду.<br>8. Клюнуло на другой удочке, пока вываживаешь? Жми «Подсечь» — рыба подождёт на крючке.<br>9. Рыбу из Красной книги можно только отпустить — зато опыта вдвое больше. Турниры — во вкладке 🏆.</div>
  <div class="panel" style="margin-top:12px"><b>☁️ Сохранения</b><div id="cloudInfo" class="sm" style="margin:6px 0;line-height:1.45">…</div>
@@ -1845,9 +1878,9 @@ if(RELEASE&&!STARS_API)document.body.classList.add('nopay');
 if(METRIKA_ID){(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');ym(METRIKA_ID,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});goal('start')}
 try{if(TG){TG.ready();TG.expand();if(TG.disableVerticalSwipes)TG.disableVerticalSwipes();if(TG.setHeaderColor)TG.setHeaderColor('#0b161d');if(TG.setBackgroundColor)TG.setBackgroundColor('#0b161d')}}catch(e){}
 if(STARS_API&&TG)setTimeout(()=>hello(()=>{claimPurchases();nftPrice();if((S.cards||[]).some(c=>c.nft&&c.nft.status!=='ready'))setTimeout(()=>nftSync(true),3000)}),1200);
-cloudLoad(c=>{if(c&&progCmp(prog(c),prog(S))>0)adoptCloud(c);else setTimeout(()=>cloudSave(),1500)});
-setInterval(()=>{if((S._t||0)>cloudLast)cloudSave()},20000);
-window.addEventListener('pagehide',()=>{save();cloudSave()});
+setTimeout(()=>{if(online())syncCheck();else cloudLoad(c=>{if(c&&progCmp(prog(c),prog(S))>0)adoptCloud(c)})},1800);
+setInterval(()=>{if(syncAsked&&$('#modal').classList.contains('on'))return;if((S._t||0)>srvLast)serverSave();if((S._t||0)>cloudLast)cloudSave()},20000);
+window.addEventListener('pagehide',()=>{save();serverSave();cloudSave()});
 render();requestAnimationFrame(frame);
 loginCheck();
 if(!S.seenHelp)ACT.help();
