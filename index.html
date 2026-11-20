@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Клёвое место — рыболовный симулятор</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
@@ -207,7 +206,8 @@ details summary{cursor:pointer;margin-bottom:4px}
 <div id="modal"><div class="box" id="mbox"></div></div>
 <div id="toast"></div>
 
-<script>
+<div id="boot" style="position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#0b161d;color:#e9f1f3;font-family:system-ui,-apple-system,Arial,sans-serif;text-align:center;padding:20px"><div style="font-size:54px">🎣</div><div style="font-size:22px;font-weight:800">Клёвое место</div><div id="bootmsg" style="font-size:14px;opacity:.75">Загружаем…</div></div>
+<script id="game" type="text/x-klevoe">
 'use strict';
 /* =====================================================================
    КЛЁВОЕ МЕСТО — рыболовный симулятор (HTML5, один файл)
@@ -1411,7 +1411,7 @@ const online=()=>!!(STARS_API&&TG);
 const TGU=()=>TG&&TG.initDataUnsafe&&TG.initDataUnsafe.user;
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function api(path,body){return fetch(STARS_API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({initData:TG.initData},body||{}))}).then(r=>r.json())}
-function hello(then){if(!online())return then&&then();api('/api/hello',{lvl:S.lvl,cw:S.cw?1:0}).then(j=>{if(j&&j.uid){S.fr={n:j.friends,a:j.active};save();if(view==='tour'&&evTab==='fr')render()}}).catch(()=>{}).finally(()=>then&&then())}
+function hello(then){if(!online())return then&&then();api('/api/hello',{lvl:S.lvl,cw:S.cw?1:0}).then(j=>{if(j&&j.uid){S.fr={n:j.friends,a:j.active,list:j.list||[],canCode:!!j.canCode,invited:!!j.invited};save();if(view==='tour'&&evTab==='fr')render()}}).catch(()=>{}).finally(()=>then&&then())}
 function refLink(){const u=TGU();return APP_LINK+(u?'?startapp=r'+u.id:'')}
 function shareText(text,link){const url='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(text);if(TG&&TG.openTelegramLink)TG.openTelegramLink(url);else window.open(url,'_blank')}
 function askWrite(){if(!TG||!TG.requestWriteAccess||!(TG.isVersionAtLeast&&TG.isVersionAtLeast('6.9')))return toast('Напоминания работают в Telegram');TG.requestWriteAccess(ok=>{if(ok){S.cw=1;save();hello();toast('🔔 Напоминания включены');render()}})}
@@ -1438,7 +1438,10 @@ function viewFriends(){const fr=S.fr||{n:0,a:0};
  <div class="sm" style="margin:8px 0;line-height:1.5">🎁 Друг сразу получает <b>200 000 ₽ и 2 путёвки</b>.<br>🏆 Ты получаешь <b>300 000 ₽, Отвар великана и вращение Колеса</b> за каждого друга, который дойдёт до 5 уровня. Без ограничений!</div>
  <div class="reflink">${esc(online()?refLink():APP_LINK)}</div>
  <div class="row" style="margin-top:8px"><button class="btn acc" style="flex:1" data-a="invite">📨 Пригласить</button><button class="btn" style="flex:1" data-a="copyRef">📋 Копировать</button></div>
- <div class="row" style="margin-top:12px;gap:8px"><div class="stat"><b>${fr.n}</b><span>пришли</span></div><div class="stat"><b>${fr.a}</b><span>дошли до 5 ур.</span></div><div class="stat"><b>${money(fr.a*300000)}</b><span>заработано</span></div></div></div>
+ <div class="row" style="margin-top:12px;gap:8px"><div class="stat"><b>${fr.n}</b><span>пришли</span></div><div class="stat"><b>${fr.a}</b><span>дошли до 5 ур.</span></div><div class="stat"><b>${money(fr.a*300000)}</b><span>заработано</span></div></div>
+ ${online()&&TGU()?`<div class="sm" style="margin-top:10px;text-align:center">Твой код друга: <b style="font-size:17px;letter-spacing:1px">${TGU().id}</b> <button class="btn sm" style="padding:3px 8px" data-a="copyCode">📋</button><div class="mut" style="margin-top:2px">Если друг зашёл не по ссылке — пусть введёт этот код у себя в «Друзьях»</div></div>`:''}
+ ${(fr.list||[]).length?`<div style="margin-top:10px">${fr.list.map(f=>`<div class="lbr"><span class="lbn">${esc(f.name)}</span><span class="sm mut">ур. ${f.lvl}</span><span>${f.ref_paid?'✅ 300 000 ₽':'⏳ до 5 ур.'}</span></div>`).join('')}</div>`:''}</div>
+ ${online()&&fr.canCode?`<div class="panel"><b>🎟️ Меня пригласил друг</b><div class="sm mut" style="margin:4px 0 8px">Введи код друга — получишь 200 000 ₽ и 2 путёвки, а друг — награду, когда ты дойдёшь до 5 уровня. Можно в первые 7 дней игры.</div><div class="row" style="gap:6px"><input id="refCode" inputmode="numeric" placeholder="Код друга (цифры)" style="flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:#0a1820;color:var(--tx)"><button class="btn acc" data-a="refCode">Ввести</button></div></div>`:''}
  <div class="panel"><b>🔔 Напоминания</b><div class="sm mut" style="margin:4px 0 8px">Бот напишет, когда Колесо снова бесплатное, пришли призы недели или друг дошёл до 5 уровня. Не чаще раза в сутки.</div>${S.cw?'<div class="sm" style="color:var(--grn)">✓ Включены</div>':'<button class="btn pri" style="width:100%" data-a="askWrite">Включить напоминания</button>'}</div>`}
 /* --- сезонный пропуск --- */
 const SEASON_LV=30,SEASON_STEP=40,MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
@@ -1732,11 +1735,13 @@ const ACT={
   if(kind==='cash'){const c=CASH.find(x=>x.id===id);payStars('cash:'+id,c.n+' — '+money(c.m),c.stars,()=>{S.money+=c.m;toast(`💰 +${money(c.m)} на счёт`)})}
   if(kind==='base'){const b=BASE[id];payStars('base:'+id,'Пропуск: '+b.n,BASE_STARS(b),()=>{S.unl=S.unl||{};S.unl[id]=true;toast(`🎫 ${b.n} — открыт навсегда!`)})}
   if(kind==='lim'){const it=itemOf(id);payStars('lim:'+id,it.n,STAR_LIM(it),()=>{if(BAITS[id])S.baits[id]=(S.baits[id]||0)+BAITS[id].q;else if(!owns(id))S.own.push(id);toast(`👑 ${it.n} — твоя!`)})}},
- evTab(v){evTab=v;render();if(v==='top')loadTop(true)},
+ evTab(v){evTab=v;render();if(v==='top')loadTop(true);if(v==='fr')hello()},
  topFish(v){topFish=v;render()},
  invite(){shareText('Погнали на рыбалку в «Клёвое место»! 🎣 По моей ссылке сразу 200 000 ₽ и 2 путёвки.',refLink())},
  copyRef(){const t=online()?refLink():APP_LINK;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('📋 Ссылка скопирована')).catch(()=>toast(t))},
  askWrite(){askWrite()},
+ copyCode(){const t=String(TGU()&&TGU().id||'');(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('📋 Код скопирован')).catch(()=>toast('Твой код: '+t))},
+ refCode(){const v=(($('#refCode')||{}).value||'').replace(/\D/g,'');if(!v)return toast('Введи код друга');api('/api/refcode',{code:v}).then(j=>{toast(j.msg||'Готово');if(j.ok){hello(()=>claimPurchases());render()}}).catch(()=>toast('Нет связи с сервером'))},
  sClaim(v){const prem=v[0]==='p',i=+v.slice(1),s=seasonS();if(seasonLv()<i)return;const arr=prem?s.p:s.f;if(arr.includes(i))return;if(prem&&!seasonPrem())return;const r=seasonRw(i,prem);const label=rwLabel(r);grantRw(r);arr.push(i);save();renderTop();render();toast('🧭 '+label)},
  shareCard(v){shareCard(v)},
  shareStory(){const img=window._shareImg;toast('Готовим сторис…');api('/api/card',{img}).then(j=>{if(!j.url)return toast(j.error||'Не удалось загрузить картинку');TG.shareToStory(j.url,{text:(window._shareTxt+' '+refLink()).slice(0,200)});goal('share',{to:'story'})}).catch(()=>toast('Нет связи с сервером'))},
@@ -1810,6 +1815,55 @@ cloudLoad(c=>{if(c&&(c._t||0)>LOCAL_T){S=Object.assign(DEF(),c);resetRods();rend
 render();requestAnimationFrame(frame);
 loginCheck();
 if(!S.seenHelp)ACT.help();
+</script>
+<script>
+/* Загрузчик: не даём игре зависнуть, если telegram.org тормозит или недоступен */
+(function(){
+ var started=false,boot=document.getElementById('boot'),msg=document.getElementById('bootmsg');
+ function hp(){var h={};try{var q=(location.hash||'').replace(/^#/,'');if(!q){q=sessionStorage.getItem('klevoe_tgp')||''}else{sessionStorage.setItem('klevoe_tgp',q)}new URLSearchParams(q).forEach(function(v,k){h[k]=v})}catch(e){}return h}
+ function shim(){
+  var P=hp();if(!P.tgWebAppData)return;
+  var initData=P.tgWebAppData,ver=P.tgWebAppVersion||'6.0',unsafe={};
+  try{new URLSearchParams(initData).forEach(function(v,k){if(k==='user'||k==='receiver'||k==='chat'){try{v=JSON.parse(v)}catch(e){}}unsafe[k]=v})}catch(e){}
+  var handlers={},reqId=0,pend={};
+  function on(t,f){(handlers[t]=handlers[t]||[]).push(f)}
+  function fire(t,d){(handlers[t]||[]).forEach(function(f){try{f(d)}catch(e){}})}
+  function post(t,d){d=d||{};try{if(window.TelegramWebviewProxy&&window.TelegramWebviewProxy.postEvent){window.TelegramWebviewProxy.postEvent(t,JSON.stringify(d))}else if(window.external&&'notify' in window.external){window.external.notify(JSON.stringify({eventType:t,eventData:d}))}else{window.parent.postMessage(JSON.stringify({eventType:t,eventData:d}),'*')}}catch(e){}}
+  window.Telegram=window.Telegram||{};window.Telegram.WebView=window.Telegram.WebView||{};
+  var prevRecv=window.Telegram.WebView.receiveEvent;
+  window.Telegram.WebView.receiveEvent=function(t,d){fire(t,d);if(prevRecv)try{prevRecv(t,d)}catch(e){}};
+  window.addEventListener('message',function(e){try{var m=JSON.parse(e.data);if(m&&m.eventType)fire(m.eventType,m.eventData)}catch(err){}});
+  on('custom_method_invoked',function(d){var cb=pend[d.req_id];if(cb){delete pend[d.req_id];cb(d.error||null,d.result)}});
+  function invoke(method,params,cb){var id='k'+(++reqId)+'_'+Date.now();pend[id]=cb;post('web_app_invoke_custom_method',{req_id:id,method:method,params:params});setTimeout(function(){if(pend[id]){delete pend[id];cb('timeout')}},8000)}
+  function cmp(a,b){a=String(a).split('.');b=String(b).split('.');for(var i=0;i<Math.max(a.length,b.length);i++){var x=+a[i]||0,y=+b[i]||0;if(x!==y)return x>y?1:-1}return 0}
+  var invCb={};on('invoice_closed',function(d){var f=invCb[d.slug];if(f){delete invCb[d.slug];f(d.status)}});
+  var waCb=null;on('write_access_requested',function(d){if(waCb){var f=waCb;waCb=null;f(d.status==='allowed')}});
+  var W={initData:initData,initDataUnsafe:unsafe,version:ver,platform:P.tgWebAppPlatform||'unknown',
+   isVersionAtLeast:function(v){return cmp(ver,v)>=0},
+   ready:function(){post('web_app_ready')},expand:function(){post('web_app_expand')},
+   setHeaderColor:function(c){post('web_app_set_header_color',{color:c})},setBackgroundColor:function(c){post('web_app_set_background_color',{color:c})},
+   disableVerticalSwipes:function(){post('web_app_setup_swipe_behavior',{allow_vertical_swipe:false})},
+   openLink:function(u){post('web_app_open_link',{url:u})},
+   openTelegramLink:function(u){var m=/^https?:\/\/t\.me\/(.+)$/.exec(u);if(m)post('web_app_open_tg_link',{path_full:'/'+m[1]});else post('web_app_open_link',{url:u})},
+   openInvoice:function(u,cb){var m=/\/\$([^/?#]+)|\/invoice\/([^/?#]+)/.exec(u);var slug=m?(m[1]||m[2]):u;if(cb)invCb[slug]=cb;post('web_app_open_invoice',{slug:slug})},
+   requestWriteAccess:function(cb){waCb=cb||function(){};post('web_app_request_write_access')},
+   shareToStory:function(url,o){o=o||{};post('web_app_share_to_story',{media_url:url,text:o.text,widget_link:o.widget_link})},
+   HapticFeedback:{impactOccurred:function(s){post('web_app_trigger_haptic_feedback',{type:'impact',impact_style:s||'light'})},notificationOccurred:function(s){post('web_app_trigger_haptic_feedback',{type:'notification',notification_type:s||'success'})},selectionChanged:function(){post('web_app_trigger_haptic_feedback',{type:'selection_change'})}},
+   CloudStorage:{setItem:function(k,v,cb){invoke('saveStorageValue',{key:k,value:v},function(e){cb&&cb(e,!e)})},getItem:function(k,cb){invoke('getStorageValues',{keys:[k]},function(e,r){cb&&cb(e,r?r[k]:'')})},getItems:function(ks,cb){invoke('getStorageValues',{keys:ks},function(e,r){cb&&cb(e,r||{})})},removeItem:function(k,cb){invoke('deleteStorageValues',{keys:[k]},function(e){cb&&cb(e,!e)})},getKeys:function(cb){invoke('getStorageKeys',{},function(e,r){cb&&cb(e,r||[])})}},
+   onEvent:function(t,f){on(t,f)},offEvent:function(){}
+  };
+  if(!(cmp(ver,'6.9')>=0))delete W.CloudStorage;
+  window.Telegram.WebApp=W;window.__klevoeShim=true;
+ }
+ function start(why){if(started)return;started=true;
+  try{if(!(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initData))shim()}catch(e){}
+  var src=document.getElementById('game');var s=document.createElement('script');s.text=src.textContent;document.body.appendChild(s);
+  setTimeout(function(){if(boot&&!window.__klevoeFail)boot.style.display='none'},60)}
+ window.addEventListener('error',function(e){if(started&&boot){window.__klevoeFail=true;boot.style.display='flex';msg.innerHTML='Не удалось запустить игру 😔<br><small style="opacity:.7">'+String(e.message||'').slice(0,140)+'</small><br><button onclick="location.reload()" style="margin-top:14px;padding:10px 22px;border-radius:99px;border:0;background:#f3b23c;font-weight:800">Перезагрузить</button>'}});
+ var t=document.createElement('script');t.src='https://telegram.org/js/telegram-web-app.js';t.async=true;t.onload=function(){start('ok')};t.onerror=function(){start('err')};document.head.appendChild(t);
+ setTimeout(function(){start('timeout')},3500);
+ setTimeout(function(){if(!started&&msg)msg.textContent='Связь медленная, ещё чуть-чуть…'},2000);
+})();
 </script>
 </body>
 </html>
