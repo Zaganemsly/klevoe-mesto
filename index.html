@@ -622,6 +622,15 @@ const LOCAL_T=S._t||0;
 function save(){S._t=Date.now();try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
 const cloudOK=()=>!!(TG&&TG.CloudStorage&&TG.isVersionAtLeast&&TG.isVersionAtLeast('6.9'));
 let cloudSlot=null,cloudBusy=false;
+const GAME_V='2026-11-20 · v9';
+function fmtT(t){if(!t)return'—';const d=new Date(+t);return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
+function cloudStatus(){const el=$('#cloudInfo');if(!el)return;
+ if(!cloudOK()){el.innerHTML=`⚠️ Облако Telegram недоступно на этом устройстве${TG?` (Telegram ${esc(TG.version||'?')}, ${esc(TG.platform||'?')})`:' — игра открыта не в Telegram'}. Прогресс хранится только здесь.`;return}
+ el.textContent='Проверяем облако…';
+ TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}const here=`здесь: <b>ур. ${S.lvl}</b>, ${money(S.money)}, карточек ${(S.cards||[]).length}`;
+  if(e)return el.innerHTML='⚠️ Облако не ответило: '+esc(String(e));
+  if(!m)return el.innerHTML=`☁️ В облаке пока пусто · ${here}`;
+  el.innerHTML=`☁️ В облаке: <b>ур. ${m.p?m.p[0]:'?'}</b>, карточек ${m.p?m.p[2]:'?'}, сохранено ${fmtT(m.t)}<br>📱 ${here}<br><span class="mut">Последняя отправка отсюда: ${fmtT(cloudLast)}</span>`})}
 // Прогресс сравниваем по уровню, опыту и коллекции, а не по времени: так более «свежий», но пустой сейв с другого устройства не затрёт настоящий
 function prog(x){return[x&&x.lvl||1,x&&x.xp||0,((x&&x.cards)||[]).length,x&&x._t||0]}
 function progCmp(a,b){for(let i=0;i<4;i++){if((a[i]||0)!==(b[i]||0))return(a[i]||0)>(b[i]||0)?1:-1}return 0}
@@ -1806,8 +1815,14 @@ const ACT={
  locFish(){const loc=curLoc();modal(`<h2>${loc.n}</h2><div class="sm mut">Здесь водится:</div><div class="list">${loc.fish.map(([id])=>{const f=FISH[id],r=S.rec[id];return `<div class="it" ${r?`data-a="fishInfo" data-v="${id}"`:''}>${fishPic(f,!r)}<div class="n">${r?f.n:'??? неизвестная рыба'}<small>${r?'Берёт на: '+f.b.map(b=>BAITS[b].e).join(' ')+' · '+f.d[0]+'–'+f.d[1]+' м':'Поймай, чтобы узнать'}</small></div></div>`}).join('')}</div><button class="btn" style="width:100%;margin-top:10px" data-a="close">Закрыть</button>`)},
  fishInfo(v){modal(fishInfoHTML(FISH[v]))},
  cardView(v){const c=(S.cards||[]).find(x=>x.uid===v);if(!c)return;window._cardOpen=v;if(!NFT_PRICE_OK)nftPrice(()=>{if(window._cardOpen===v&&$('#mbox')&&$('#mbox').innerText.includes('Выпустить NFT'))ACT.cardView(v)});modal(`<div style="text-align:center">${cardHTML(c,true)}</div><button class="btn stars" style="width:100%;margin-top:12px" data-a="shareCard" data-v="${c.uid}">📣 Похвастаться</button>${nftBlock(c)}<button class="btn" style="width:100%;margin-top:8px" data-a="close">Закрыть</button>`)},
- help(){S.seenHelp=true;save();modal(`<h2>Как ловить</h2><div class="sm" style="line-height:1.5">
+ cloudUp(){if(!cloudOK())return toast('Облако Telegram недоступно на этом устройстве');save();cloudBusy=true;cloudBusyT=Date.now();TG.CloudStorage.getItem('meta',(e,v)=>{let m=null;try{m=v?JSON.parse(v):null}catch(_){}if(m)cloudSlot=m.slot;cloudWrite();setTimeout(()=>{toast('⬆️ Прогресс отправлен в облако');cloudStatus()},1500)})},
+ cloudDown(){if(!cloudOK())return toast('Облако Telegram недоступно на этом устройстве');toast('⬇️ Загружаем…');cloudLoad(c=>{if(!c)return toast('В облаке пусто или оно не ответило');closeModal();adoptCloud(c,'☁️ Прогресс загружен из облака: ур. '+(c.lvl||1))})},
+ help(){S.seenHelp=true;save();setTimeout(cloudStatus,50);modal(`<h2>Как ловить</h2><div class="sm" style="line-height:1.5">
  1. Нажми <b>«🎯 Забросить»</b> и коснись воды — куда ткнёшь, туда и полетит (в пределах дальности удилища). Можно просто ткнуть в воду — заброс сделает свободная снасть.<br>2. Когда поплавок нырнёт или зазвенит колокольчик — жми <b>«ПОДСЕЧЬ!»</b>, пока не поздно.<br>3. Держи <b>«КРУТИТЬ»</b> (или пробел), следи за натяжением. Если шкала краснеет — отпусти кнопку, дай рыбе устать.<br>4. <b>Фрикцион</b> — главный друг: поставь его ниже прочности лески, тогда рыба будет стравливать леску, а не рвать её.<br>5. Глубина и наживка решают всё. Загляни в «📖 Рыба водоёма» — пойманные виды показывают, на что берут.<br>6. У каждой точки своя глубина. Глубомер и эхолот (магазин → «Снаряжение») показывают дно, а эхолот ещё и стаи рыбы.<br>7. Голодным ловить можно, но хуже. Нет денег — ягоды 🌿 (раз в день) и черви 🪱 (3 раза в день) выручат: поймай пару рыб и купи еду.<br>8. Клюнуло на другой удочке, пока вываживаешь? Жми «Подсечь» — рыба подождёт на крючке.<br>9. Рыбу из Красной книги можно только отпустить — зато опыта вдвое больше. Турниры — во вкладке 🏆.</div>
+ <div class="panel" style="margin-top:12px"><b>☁️ Сохранения</b><div id="cloudInfo" class="sm" style="margin:6px 0;line-height:1.45">…</div>
+ <div class="row" style="gap:6px"><button class="btn" style="flex:1" data-a="cloudUp">⬆️ Отправить в облако</button><button class="btn" style="flex:1" data-a="cloudDown">⬇️ Загрузить из облака</button></div>
+ <div class="sm mut" style="margin-top:6px">Играешь на телефоне и ПК? Прогресс синхронизируется сам через облако Telegram. Если что-то не подтянулось — нажми «Отправить» там, где прогресс лучше, и «Загрузить» на другом устройстве.</div></div>
+ <div class="sm mut" style="text-align:center;margin-top:8px">Версия игры: ${GAME_V}</div>
  <div class="row" style="margin-top:12px"><button class="btn pri" style="flex:1" data-a="close">Понятно!</button><button class="btn red" data-a="resetAsk">Сброс</button></div>
  ${RELEASE?'':'<button class="btn" style="width:100%;margin-top:8px;border-style:dashed" data-a="devBoost">🧪 Тест: 50 уровень + 100 млн ₽</button>'}`)},
  /* ТЕСТОВАЯ КНОПКА — убрать перед релизом */
