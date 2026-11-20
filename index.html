@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Клёвое место — рыболовный симулятор</title>
+<link rel="preconnect" href="https://klevoe.danvoloshin99.workers.dev" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
@@ -936,7 +937,7 @@ function biteHint(i){const s=S.slots[i],rod=ITEM[s.rod];if(!rod)return['h-bad','
  const b=biteInfo(i);const pre=(b.mark&&echoLv()>=2?'🐟 Рядом стая — клюёт чаще. ':'')+(S.sat<=0?'😩 На голодный желудок клюёт хуже. ':'');const r0=biteHint0(b);return[r0[0],pre+r0[1]]}
 function biteHint0(b){if(b.frac>.45)return['h-good','Клёв отличный'];if(b.frac>.22)return['h-good','Клёв хороший'];if(b.frac>.07)return['h-mid','Клёв слабый — попробуй другую глубину или наживку'];if(b.frac>0)return['h-mid','Клюёт редко'];return['h-bad','Здешняя рыба не берёт на это — смени наживку или глубину']}
 function toast(t){const box=$('#toast');while(box.children.length>=2)box.firstChild.remove();const d=document.createElement('div');d.innerHTML=t;box.appendChild(d);setTimeout(()=>d.remove(),2800)}
-function modal(html){$('#mbox').innerHTML=html;$('#modal').classList.add('on')}
+function modal(html){$('#mbox').innerHTML=html;$('#modal').classList.add('on');if(html.indexOf('buyStars')>=0&&typeof prefetchInvoices==='function')prefetchInvoices()}
 function closeModal(){$('#modal').classList.remove('on')}
 function addXP(x){S.xp+=Math.round(x);let up=false;const lv0=S.lvl;while(S.xp>=xpNeed(S.lvl)){S.xp-=xpNeed(S.lvl);S.lvl++;up=true;const gift=S.lvl*500;S.money+=gift;setTimeout(()=>toast(`🎁 Награда за уровень: +${money(gift)}`),600);if(S.lvl%5===0){S.potions=S.potions||{};S.potions.giant=(S.potions.giant||0)+1;S.spinTok=(S.spinTok||0)+1;setTimeout(()=>toast('🎁 Юбилейный уровень: Отвар великана + вращение Колеса Шамана'),1200)}}
  if(up){hello();if(S.lvl>=3&&!S.starter&&!S.starterShown)setTimeout(starterOffer,2500);goal('level',{lvl:S.lvl});toast(`⭐ Новый уровень: <b>${S.lvl}</b>`);if(S.lvl===4||S.lvl===10)toast('🎣 Открыта ещё одна снасть!');const nb=BASES.find(b=>b.lvl===S.lvl);if(nb)toast(`🗺️ Открыт водоём: <b>${nb.n}</b>`)}}
@@ -1197,7 +1198,7 @@ function renderTop(){
  <div class="chip">${S.time/60>=21||S.time/60<5?'🌙':'☀️'} ${hhmm(S.time)}<span class="dday"> · д.${S.day}</span></div></div>`;
  const _t=$('#top');if(_t&&_t._h!==_h){_t._h=_h;_t.innerHTML=_h}
 }
-function render(){
+function render(){setTimeout(()=>{try{prefetchInvoices()}catch(e){}},0);
  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
  renderTop();const v=$('#view');
  if(view==='fish'){const loc=curLoc(),b=curBase();
@@ -1370,10 +1371,17 @@ function potionsHTML(){S.potions=S.potions||{};return Object.entries(POTIONS).ma
    работает тестовый режим (товар выдаётся без оплаты). Перед релизом выдачу перенести на сервер. */
 /* Адрес сервера оплаты, например 'https://api.klevoe-mesto.ru'. Пусто — тестовый режим (в релизе покупки скрыты). */
 const STARS_API='https://klevoe.danvoloshin99.workers.dev';
+/* счета готовим заранее — оплата открывается мгновенно */
+const INVC={};let invBusy=false,invT=0;
+function invKey(v){const [k,id]=String(v||'').split('|');return ['potion','cash','base','lim'].includes(k)?k+':'+id:k}
+function prefetchInvoices(){if(!(STARS_API&&TG))return;clearTimeout(invT);invT=setTimeout(()=>{if(invBusy)return;const want=[...new Set([...document.querySelectorAll('[data-a=buyStars]')].map(b=>invKey(b.dataset.v)))].filter(p=>p&&p!=='nft'&&!(INVC[p]&&Date.now()-INVC[p].t<6*3600e3)).slice(0,12);if(!want.length)return;invBusy=true;
+ fetch(STARS_API+'/api/invoices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:TG.initData,products:want})}).then(r=>r.json()).then(j=>{if(j&&j.links)for(const k in j.links)INVC[k]={link:j.links[k],t:Date.now()}}).catch(()=>{}).finally(()=>{invBusy=false})},350)}
+function openPaid(link){try{haptic('light')}catch(e){}TG.openInvoice(link,st=>{if(st==='paid'){toast('⭐ Оплата прошла — выдаём покупку…');claimPurchases(0)}else if(st==='failed')toast('Оплата не прошла');else if(st==='cancelled')toast('Оплата отменена');setTimeout(prefetchInvoices,500)})}
 function payStars(product,title,stars,grant,extra){if(RELEASE&&!STARS_API)return toast('Покупки за звёзды появятся в ближайшем обновлении');
  if(STARS_API){if(!TG)return toast('Покупки работают внутри Telegram');
-  fetch(STARS_API+'/api/invoice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({initData:TG.initData,product},extra||{}))}).then(r=>r.json()).then(j=>{if(!j.link)return toast(j.error||'Не удалось создать счёт');
-   TG.openInvoice(j.link,st=>{if(st==='paid'){toast('⭐ Оплата прошла — выдаём покупку…');claimPurchases(0)}else if(st==='failed')toast('Оплата не прошла');else toast('Оплата отменена')})}).catch(()=>toast('Нет связи с сервером, попробуйте позже'));return}
+  const c=!extra&&INVC[product];if(c&&Date.now()-c.t<6*3600e3){delete INVC[product];openPaid(c.link);return}
+  toast('⏳ Открываем оплату…');
+  fetch(STARS_API+'/api/invoice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({initData:TG.initData,product},extra||{}))}).then(r=>r.json()).then(j=>{if(!j.link)return toast(j.error||'Не удалось создать счёт');openPaid(j.link)}).catch(()=>toast('Нет связи с сервером, попробуйте позже'));return}
  window._grant=grant;modal(`<h2>${title}</h2><div style="font-size:28px;font-weight:800;color:#ffd84a;margin:6px 0">${stars} ⭐</div><div class="sm mut">Сервер оплаты не подключён — тестовый режим.</div>
  <button class="btn acc" style="width:100%;margin-top:12px" data-a="testGrant">🧪 Тест: получить без оплаты</button><button class="btn" style="width:100%;margin-top:8px" data-a="close">Отмена</button>`)}
 /* забрать оплаченные покупки с сервера (после оплаты и при каждом запуске — если игру закрыли во время оплаты) */
